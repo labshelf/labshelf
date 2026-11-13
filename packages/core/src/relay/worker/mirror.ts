@@ -97,30 +97,33 @@ export class Mirror {
         return json({});
       case `GET ${MIRROR_PATH.index}`: return json(this.storage.index());
       case `GET ${MIRROR_PATH.file}`: return this.readFile(pathParam(url));
-      case `PUT ${MIRROR_PATH.file}`: {
-        const path = pathParam(url);
-        const kind = request.headers.get("x-labshelf-kind");
-        const hash = request.headers.get("x-labshelf-hash");
-        if (!isMirrorKind(kind) || !hash) { throw new MirrorRefusal("malformed"); }
-        await this.writeRows([{ path, kind, hash, bytes: new Uint8Array(await request.arrayBuffer()) }]);
-        return json({});
-      }
+      case `PUT ${MIRROR_PATH.file}`: return this.putFile(pathParam(url), request);
       case `GET ${MIRROR_PATH.status}`: return json(this.status());
       case `PUT ${MIRROR_PATH.settings}`: return this.putSettings(request);
       case `PUT ${MIRROR_PATH.edit}`: return this.edit(pathParam(url), request, false);
       case `DELETE ${MIRROR_PATH.edit}`: return this.edit(pathParam(url), request, true);
       case `GET ${MIRROR_PATH.edits}`: return json({ edits: this.storage.edits() });
-      case `POST ${MIRROR_PATH.editsAck}`: {
-        const body = (await readJson(request)) as { edits?: unknown } | undefined;
-        const acks = body?.edits;
-        const isAck = (ack: unknown): ack is { path: string; hash: string } =>
-          typeof ack === "object" && ack !== null && isString((ack as { path?: unknown }).path) && isString((ack as { hash?: unknown }).hash);
-        if (!Array.isArray(acks) || !acks.every(isAck)) { throw new MirrorRefusal("malformed"); }
-        for (const ack of acks) { this.storage.ackEdit(ack.path, ack.hash); }
-        return json({});
-      }
+      case `POST ${MIRROR_PATH.editsAck}`: return this.ackEdits(request);
       default: return new Response(null, { status: 404 });
     }
+  }
+
+  private async putFile(path: string, request: Request): Promise<Response> {
+    const kind = request.headers.get("x-labshelf-kind");
+    const hash = request.headers.get("x-labshelf-hash");
+    if (!isMirrorKind(kind) || !hash) { throw new MirrorRefusal("malformed"); }
+    await this.writeRows([{ path, kind, hash, bytes: new Uint8Array(await request.arrayBuffer()) }]);
+    return json({});
+  }
+
+  private async ackEdits(request: Request): Promise<Response> {
+    const body = (await readJson(request)) as { edits?: unknown } | undefined;
+    const acks = body?.edits;
+    const isAck = (ack: unknown): ack is { path: string; hash: string } =>
+      typeof ack === "object" && ack !== null && isString((ack as { path?: unknown }).path) && isString((ack as { hash?: unknown }).hash);
+    if (!Array.isArray(acks) || !acks.every(isAck)) { throw new MirrorRefusal("malformed"); }
+    for (const ack of acks) { this.storage.ackEdit(ack.path, ack.hash); }
+    return json({});
   }
 
   private async putRows(request: Request): Promise<Response> {

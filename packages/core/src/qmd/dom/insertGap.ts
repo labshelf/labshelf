@@ -1,5 +1,5 @@
 // The insert points of an editable note (plan notebook-flow D13): a '+' at the end of each top-level block (a cell's after its outputs), shown on hover
-// between two short lines, and, on an empty note, a row of block choices.
+// between two short lines, and, on an empty note, a row of block choices; also the empty-note placeholder and the editor's other small plugins.
 import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, Plugin, TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
@@ -108,4 +108,39 @@ export function insertGapPlugin(emptyChoices = true, fromPaper?: (view: EditorVi
     state: { init: (_config, state) => decorate(state.doc, emptyChoices, fromPaper), apply: (tr, set) => (tr.docChanged ? decorate(tr.doc, emptyChoices, fromPaper) : set) },
     props: { decorations(state) { return this.getState(state); } },
   });
+}
+
+/** Shows the empty-item placeholder through a node decoration with a class. */
+export function placeholderPlugin(text: string): Plugin {
+  return new Plugin({
+    props: {
+      decorations(state) {
+        const { doc } = state;
+        if (!isEmptyNote(doc)) return null;
+        return DecorationSet.create(doc, [Decoration.node(0, doc.firstChild!.nodeSize, { class: "qmd-editor-placeholder", "data-placeholder": text })]);
+      },
+    },
+  });
+}
+
+/** Opens links through `onOpenLink` instead of navigating the host page. */
+export function linkPlugin(onOpenLink: (href: string) => void): Plugin {
+  return new Plugin({
+    props: {
+      handleDOMEvents: {
+        click(_view, event) {
+          const anchor = (event.target as Element | null)?.closest?.("a[href]");
+          if (!anchor) return false;
+          event.preventDefault();
+          onOpenLink(anchor.getAttribute("href") ?? "");
+          return true;
+        },
+      },
+    },
+  });
+}
+
+/** Remote cursors drawn with classes only: the webview CSP forbids inline styles. */
+export function collabCursor(user: { name?: string }): HTMLElement {
+  return renderElement("span", { class: "qmd-editor-cursor" }, "⁠", renderElement("span", { class: "qmd-editor-cursor-name", text: user.name ?? "" }), "⁠");
 }

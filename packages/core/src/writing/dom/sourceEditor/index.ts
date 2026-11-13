@@ -10,6 +10,7 @@ export { createEditorOutputLinks, type EditorOutputLinks, type OutputLinkActions
 export * from "./formatting.js";
 export * from "./openEditors.js";
 export * from "./editor.js";
+export { applyProblems, createEditorExtensions, createHelperUpdates, createWriteScheduler, showLine, toProblems, type EditorExtensionOptions, type EditorHelper, type ProblemSource, type WriteSchedulerDeps } from "./editorSupport.js";
 export { codeHighlight, editorTheme } from "./editorTheme.js";
 export { createSelectionListener } from "./selectionListener.js";
 export { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";

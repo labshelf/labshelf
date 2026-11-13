@@ -1,4 +1,4 @@
-// Draws the reader's bars: the toolbar, the page pill, tab lists and the build banner.
+// Draws the reader's bars: the toolbar and the page pill.
 import { initialAutohide, deriveToolbarVisibility, type AutohideEvent, type AutohideState, type ZoomKind } from "../index.js";
 import type { AnnotationColor } from "../../model/index.js";
 import { AnnotationColorPicker, renderReaderIconButton, isPopoverOpen, onPopoverToggle, buildMenu, updatePopoverOpen, type MenuItem } from "./elements.js";
@@ -30,6 +30,37 @@ export interface ToolbarActions {
   citeInProject?(): void;
   /** Copies the bare citation of the paper; present with `citeInProject`. */
   copyCitation?(): void;
+}
+
+/** The annotation tools (highlight, underline, note), each registered in `tools`, followed by the `rest` of the group. */
+function renderToolGroup(actions: ToolbarActions, tools: Map<string, HTMLButtonElement>, rest: HTMLElement[]): HTMLElement {
+  const group = renderElement("div", { class: "rd-toolbar-group rd-toolbar-tools", role: "group", "aria-label": "Annotations" });
+  for (const [tool, label, icon] of [["highlight", "Highlight", "highlighter"], ["underline", "Underline", "underline"], ["note", "Add note", "note"]] as const) {
+    const button = renderReaderIconButton(renderIcon(icon), label);
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => actions.selectTool(tool));
+    tools.set(tool, button);
+    group.append(button);
+  }
+  group.append(...rest);
+  group.addEventListener("mousedown", (event) => event.preventDefault());
+  return group;
+}
+
+/** The group at the toolbar's end: Find, Cite when the host offers it, Appearance, the shortcuts and the details toggle. */
+function renderEndGroup(mod: string, actions: ToolbarActions, detailsBtn: HTMLButtonElement): HTMLElement {
+  const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
+  const appearanceBtn = renderReaderIconButton(renderIcon("text-size"), "Appearance");
+  const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
+  findBtn.addEventListener("click", actions.openFind);
+  appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
+  helpBtn.addEventListener("click", actions.openCheatsheet);
+  const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("quote"), "Cite…");
+  const { citeInProject, copyCitation } = actions;
+  if (citeBtn && citeInProject) {
+    citeBtn.addEventListener("click", () => openQuoteMenu(citeBtn, { label: "Copy citation", icon: "copy", run: () => copyCitation?.() }, citeInProject, "below"));
+  }
+  return renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, citeBtn, appearanceBtn, helpBtn, detailsBtn);
 }
 
 export class Toolbar {
@@ -67,20 +98,8 @@ export class Toolbar {
     this.equationBtn.setAttribute("aria-pressed", "false");
     this.detailsBtn = renderReaderIconButton(renderIcon("panel-right"), "Toggle LabShelf Details");
     this.detailsBtn.addEventListener("click", actions.toggleDetails);
-    const editing = renderElement("div", { class: "rd-toolbar-group rd-toolbar-tools", role: "group", "aria-label": "Annotations" });
-    for (const [tool, label, icon] of [["highlight", "Highlight", "highlighter"], ["underline", "Underline", "underline"], ["note", "Add note", "note"]] as const) {
-      const button = renderReaderIconButton(renderIcon(icon), label);
-      button.setAttribute("aria-pressed", "false");
-      button.addEventListener("click", () => actions.selectTool(tool));
-      this.tools.set(tool, button);
-      editing.append(button);
-    }
     this.colorPicker = new AnnotationColorPicker(actions.selectColor);
-    editing.append(this.boxBtn, this.equationBtn, this.colorPicker.el);
-    editing.addEventListener("mousedown", (event) => event.preventDefault());
-    const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
-    const appearanceBtn = renderReaderIconButton(renderIcon("text-size"), "Appearance");
-    const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
+    const editing = renderToolGroup(actions, this.tools, [this.boxBtn, this.equationBtn, this.colorPicker.el]);
     this.previousBtn.disabled = true;
     this.nextBtn.disabled = true;
 
@@ -89,19 +108,11 @@ export class Toolbar {
     this.nextBtn.addEventListener("click", actions.nextPage);
     this.boxBtn.addEventListener("click", actions.toggleBoxTool);
     this.equationBtn.addEventListener("click", actions.toggleEquationTool);
-    findBtn.addEventListener("click", actions.openFind);
-    appearanceBtn.addEventListener("click", () => actions.openAppearance(appearanceBtn));
-    helpBtn.addEventListener("click", actions.openCheatsheet);
-    const citeBtn = actions.citeInProject && renderReaderIconButton(renderIcon("quote"), "Cite…");
-    const { citeInProject, copyCitation } = actions;
-    if (citeBtn && citeInProject) {
-      citeBtn.addEventListener("click", () => openQuoteMenu(citeBtn, { label: "Copy citation", icon: "copy", run: () => copyCitation?.() }, citeInProject, "below"));
-    }
 
     this.el.append(
       renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.previousBtn, this.nextBtn),
       editing,
-      renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, citeBtn, appearanceBtn, helpBtn, this.detailsBtn),
+      renderEndGroup(mod, actions, this.detailsBtn),
     );
 
     this.bindAutohide();
@@ -325,98 +336,5 @@ export class PagePill {
 
   private presetItem(label: string, preset: ZoomKind): MenuItem {
     return { label, checked: this.zoom.scaleValue === preset, run: () => this.zoom.setPreset(preset) };
-  }
-}
-
-// Shows a strip of tabs where arrow keys, Home and End move the selection with a roving tabindex.
-
-/** One tab: its id, its visible label and the id of the panel it shows, when it has one. */
-export interface TabSpec<T extends string> {
-  id: T;
-  label: string;
-  controls?: string;
-}
-
-interface TabListOptions<T extends string> {
-  /** The accessible name of the strip. */
-  label: string;
-  onSelect: (id: T) => void;
-  /** The tab selected at first; the first tab when absent. */
-  selected?: T;
-}
-
-export class TabList<T extends string> {
-  readonly el: HTMLElement;
-  private readonly buttons: HTMLButtonElement[];
-  private current: number;
-
-  constructor(private readonly tabs: ReadonlyArray<TabSpec<T>>, private readonly options: TabListOptions<T>) {
-    this.el = renderElement("div", { class: "rd-tabs", role: "tablist", "aria-label": options.label });
-    this.buttons = tabs.map(({ id, label, controls }) => {
-      const button = renderElement("button", { class: "rd-tab", type: "button", role: "tab", text: label });
-      if (controls !== undefined) { button.setAttribute("aria-controls", controls); }
-      button.addEventListener("click", () => this.select(id));
-      return button;
-    });
-    this.current = Math.max(0, tabs.findIndex((t) => t.id === options.selected));
-    this.el.append(...this.buttons);
-    this.el.addEventListener("keydown", (e) => this.onKey(e));
-    this.mark();
-  }
-
-  get selected(): T { return this.tabs[this.current]!.id; }
-
-  /** @returns the button of the tab `id`, for callers that relabel or restyle it. */
-  button(id: T): HTMLButtonElement { return this.buttons[this.indexOf(id)]!; }
-
-  /** Selects the tab `id` and reports it; `focus` also moves keyboard focus onto it. */
-  select(id: T, focus = false): void {
-    this.current = this.indexOf(id);
-    this.mark();
-    if (focus) { this.buttons[this.current]!.focus(); }
-    this.options.onSelect(id);
-  }
-
-  private indexOf(id: T): number { return this.tabs.findIndex((t) => t.id === id); }
-
-  private mark(): void {
-    this.buttons.forEach((button, i) => {
-      button.setAttribute("aria-selected", String(i === this.current));
-      button.tabIndex = i === this.current ? 0 : -1;
-    });
-  }
-
-  private onKey(e: KeyboardEvent): void {
-    const last = this.tabs.length - 1;
-    const step: Record<string, number> = { ArrowRight: this.current + 1, ArrowLeft: this.current - 1, Home: 0, End: last };
-    const target = step[e.key];
-    if (target === undefined) { return; }
-    e.preventDefault();
-    const wrapped = target < 0 ? last : target > last ? 0 : target;
-    this.select(this.tabs[wrapped]!.id, true);
-  }
-}
-
-// Reports a preview PDF that could not reload, at the top of the reader.
-
-export class BuildBanner {
-  private readonly root = findElement("build-banner");
-
-  /**
-   * Reports a PDF the reader could not reload; the open document stays on screen.
-   */
-  showReloadError(message: string): void {
-    this.render("rd-build-failed", renderElement("span", { class: "rd-build-icon", html: renderIcon("warning") }), `Could not reload the PDF: ${message}`);
-  }
-
-  clear(): void {
-    this.root.hidden = true;
-    this.root.replaceChildren();
-  }
-
-  private render(kind: string, glyph: HTMLElement, text: string): void {
-    this.root.className = kind;
-    this.root.replaceChildren(glyph, renderElement("span", {}, text));
-    this.root.hidden = false;
   }
 }

@@ -190,6 +190,12 @@ function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefi
   };
 }
 
+function parseResponse(value: Record<string, unknown>): SourceEditorInbound | undefined {
+  if (!isNumber(value.id)) { return undefined; }
+  if (value.ok === true) { return { type: "response", id: value.id, ok: true, value: value.value }; }
+  return value.ok === false && isString(value.error) ? { type: "response", id: value.id, ok: false, error: value.error } : undefined;
+}
+
 function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound | undefined {
   switch (value.type) {
     case "init":
@@ -213,9 +219,7 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
       return command && { type: "command", command };
     }
     case "response":
-      if (!isNumber(value.id)) { return undefined; }
-      if (value.ok === true) { return { type: "response", id: value.id, ok: true, value: value.value }; }
-      return value.ok === false && isString(value.error) ? { type: "response", id: value.id, ok: false, error: value.error } : undefined;
+      return parseResponse(value);
     case "comments": {
       const ranges = parseList(value.ranges, parseCommentRange);
       return ranges && { type: "comments", ranges };

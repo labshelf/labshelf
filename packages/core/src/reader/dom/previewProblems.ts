@@ -1,14 +1,13 @@
 // Shows the problems of a build preview: the limit meter, the problem marks over pages and the build logs.
 import { renderElement } from "../../ui/dom/index.js";
 import type { PreviewBuildRoots, WebviewToHost, CheckLimitsChange, PdfProblem, PreviewBuildRoot, PreviewProblem } from "../index.js";
-import { closePopover, updatePopoverOpen, renderReaderIconButton } from "./elements.js";
+import { closePopover, updatePopoverOpen, renderReaderIconButton, TabList } from "./elements.js";
 import type { CountUpTo } from "../../writing/project/index.js";
 import { createDebouncer } from "../../async/index.js";
 import { renderAreaMark } from "./areaMark.js";
 import type { PageViewLike } from "./navigation.js";
 import type { ReaderContext } from "./readerSession.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
-import { TabList } from "./toolbar.js";
 
 // Shows body pages and words against the project's limits as a meter, with a popover that edits the limits.
 

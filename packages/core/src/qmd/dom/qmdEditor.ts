@@ -3,7 +3,7 @@ import { baseKeymap } from "prosemirror-commands";
 import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { EditorState, Plugin, type Command } from "prosemirror-state";
-import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
+import { EditorView } from "prosemirror-view";
 import { redoCommand, undoCommand, yCursorPlugin, ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 import type * as Y from "yjs";
 import type { Awareness } from "y-protocols/awareness";
@@ -32,7 +32,7 @@ import { createFigureView } from "./figureView.js";
 import { loadFigureEditor } from "./figureEditor/index.js";
 import { tableChartsPlugin } from "./tableCharts.js";
 import { loadCorePlotly } from "./plotView.js";
-import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
+import { collabCursor, insertGapPlugin, linkPlugin, placeholderPlugin, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
@@ -65,41 +65,6 @@ const EXTERNAL = "qmdExternal";
 
 /** UI words for a LabShelf Markdown item (D16); renaming "note" is a change here only. */
 export const QMD_VOCABULARY: { readonly item: string } = { item: "note" };
-
-/** Shows the empty-item placeholder through a node decoration with a class. */
-function placeholderPlugin(text: string): Plugin {
-  return new Plugin({
-    props: {
-      decorations(state) {
-        const { doc } = state;
-        if (!isEmptyNote(doc)) return null;
-        return DecorationSet.create(doc, [Decoration.node(0, doc.firstChild!.nodeSize, { class: "qmd-editor-placeholder", "data-placeholder": text })]);
-      },
-    },
-  });
-}
-
-/** Opens links through `onOpenLink` instead of navigating the host page. */
-function linkPlugin(onOpenLink: (href: string) => void): Plugin {
-  return new Plugin({
-    props: {
-      handleDOMEvents: {
-        click(_view, event) {
-          const anchor = (event.target as Element | null)?.closest?.("a[href]");
-          if (!anchor) return false;
-          event.preventDefault();
-          onOpenLink(anchor.getAttribute("href") ?? "");
-          return true;
-        },
-      },
-    },
-  });
-}
-
-/** Remote cursors drawn with classes only: the webview CSP forbids inline styles. */
-function collabCursor(user: { name?: string }): HTMLElement {
-  return renderElement("span", { class: "qmd-editor-cursor" }, "⁠", renderElement("span", { class: "qmd-editor-cursor-name", text: user.name ?? "" }), "⁠");
-}
 
 interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; footer: HTMLElement; source: HTMLTextAreaElement }
 

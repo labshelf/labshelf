@@ -18,17 +18,56 @@ function sameStat(a: FileStat | undefined, b: FileStat): boolean {
   return a !== undefined && a.lastModified === b.lastModified && a.size === b.size;
 }
 
+/** What the writer last read from or wrote to disk: the text, and the stat that gates the next check. */
+interface DiskState { base: string | undefined; lastStat: FileStat | undefined }
+
+async function syncFile(options: FileWriterOptions, state: DiskState): Promise<void> {
+  const { path, replica, files, textMerge } = options;
+  const disk = await files.read(path);
+  if (state.base === undefined) { state.base = disk; }
+  const local = replica.text();
+  if (disk === state.base) {
+    if (local !== state.base) { await files.write(path, local); state.base = local; }
+  } else {
+    const result = mergeLocalFile({ path, base: state.base, local, other: disk }, textMerge, options.copyId?.());
+    if (result.conflict) {
+      await files.write(result.conflict.copyPath, result.conflict.text);
+      options.onConflict?.(path, result.conflict.copyPath);
+    }
+    replica.replace(result.text, DISK_ORIGIN);
+    if (result.text !== disk) { await files.write(path, result.text); }
+    state.base = result.text;
+  }
+  state.lastStat = await options.files.stat(path);
+}
+
+async function checkFile(options: FileWriterOptions, state: DiskState): Promise<void> {
+  const stat = await options.files.stat(options.path);
+  if (sameStat(state.lastStat, stat)) { return; }
+  await syncFile(options, state);
+}
+
+/** Reads the file, then `attach` starts the doc listener; a doc that differs from the disk is synced at once. */
+async function startFile(options: FileWriterOptions, state: DiskState, attach: () => void): Promise<void> {
+  try {
+    state.base = await options.files.read(options.path);
+    state.lastStat = await options.files.stat(options.path);
+  } finally {
+    attach();
+  }
+  if (state.base !== undefined && options.replica.text() !== state.base) { await syncFile(options, state); }
+}
+
 // CONTRACT: documents/contracts/local-sync.md#disk-writer
 /**
  * Every file call runs on one queue in call order, so reads and writes never overlap. A failed call goes to onError and
  * leaves base and the last stat as they were; the next change, check or sync retries.
  */
 export function createFileWriter(options: FileWriterOptions): FileWriter {
-  const { path, replica, files, textMerge } = options;
+  const { path, replica } = options;
   const scheduler = options.scheduler ?? systemScheduler;
   const delay = options.persistDelayMs ?? PERSIST_DELAY_MS;
-  let base: string | undefined;
-  let lastStat: FileStat | undefined;
+  const state: DiskState = { base: undefined, lastStat: undefined };
   let tail: Promise<void> = Promise.resolve();
   let cancelTimer: (() => void) | undefined;
   let stopped = false;
@@ -39,30 +78,7 @@ export function createFileWriter(options: FileWriterOptions): FileWriter {
     return next;
   };
 
-  const runSync = async (): Promise<void> => {
-    const disk = await files.read(path);
-    if (base === undefined) { base = disk; }
-    const local = replica.text();
-    if (disk === base) {
-      if (local !== base) { await files.write(path, local); base = local; }
-    } else {
-      const result = mergeLocalFile({ path, base, local, other: disk }, textMerge, options.copyId?.());
-      if (result.conflict) {
-        await files.write(result.conflict.copyPath, result.conflict.text);
-        options.onConflict?.(path, result.conflict.copyPath);
-      }
-      replica.replace(result.text, DISK_ORIGIN);
-      if (result.text !== disk) { await files.write(path, result.text); }
-      base = result.text;
-    }
-    lastStat = await files.stat(path);
-  };
-
-  const runCheck = async (): Promise<void> => {
-    const stat = await files.stat(path);
-    if (sameStat(lastStat, stat)) { return; }
-    await runSync();
-  };
+  const runSync = (): Promise<void> => syncFile(options, state);
 
   const persist = (): void => {
     cancelTimer = undefined;
@@ -75,17 +91,6 @@ export function createFileWriter(options: FileWriterOptions): FileWriter {
     cancelTimer = scheduler.after(delay, persist);
   };
 
-  const runStart = async (): Promise<void> => {
-    try {
-      const disk = await files.read(path);
-      base = disk;
-      lastStat = await files.stat(path);
-    } finally {
-      if (!stopped) { replica.doc.on("update", onUpdate); }
-    }
-    if (base !== undefined && replica.text() !== base) { await runSync(); }
-  };
-
   const flushQueue = (): Promise<void> => {
     if (!cancelTimer) { return enqueue(async () => {}); }
     cancelTimer();
@@ -95,8 +100,8 @@ export function createFileWriter(options: FileWriterOptions): FileWriter {
 
   return {
     path,
-    start: () => (stopped ? enqueue(async () => {}) : enqueue(runStart)),
-    check: () => (stopped ? enqueue(async () => {}) : enqueue(runCheck)),
+    start: () => (stopped ? enqueue(async () => {}) : enqueue(() => startFile(options, state, () => { if (!stopped) { replica.doc.on("update", onUpdate); } }))),
+    check: () => (stopped ? enqueue(async () => {}) : enqueue(() => checkFile(options, state))),
     sync: () => (stopped ? enqueue(async () => {}) : enqueue(runSync)),
     flush: () => (stopped ? enqueue(async () => {}) : flushQueue()),
     stop: () => {

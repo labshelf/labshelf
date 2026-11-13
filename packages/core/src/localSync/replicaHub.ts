@@ -118,120 +118,139 @@ interface Held {
   detach: () => void;
 }
 
-// CONTRACT: documents/contracts/local-sync.md#replicas
-export function createReplicaHub(options: { channel: ReplicaChannel; scheduler?: SessionScheduler; pageId?: string; peerWaitMs?: number }): ReplicaHub {
-  const { channel } = options;
-  const scheduler = options.scheduler ?? systemScheduler;
-  const pageId = options.pageId ?? globalThis.crypto.randomUUID();
-  const peerWaitMs = options.peerWaitMs ?? DEFAULT_PEER_WAIT_MS;
+/** What the hub's functions share: the channel, this page's id, the held replicas and the origins that tell a peer's update from a seed. */
+interface HubContext {
+  readonly channel: ReplicaChannel;
+  readonly scheduler: SessionScheduler;
+  readonly pageId: string;
+  readonly peerWaitMs: number;
   /** Marks updates applied from peer messages, so they are not posted back. */
-  const remoteOrigin = Symbol("replica-remote");
-  const seedOrigin = Symbol("replica-seed");
-  const held = new Map<string, Held>();
+  readonly remoteOrigin: symbol;
+  readonly seedOrigin: symbol;
+  readonly held: Map<string, Held>;
+}
 
-  const post = (key: string, tag: number, payload: Uint8Array, to?: string) => {
-    channel.post(to === undefined ? { key, from: pageId, bytes: encodeSyncMessage(tag, payload) } : { key, from: pageId, to, bytes: encodeSyncMessage(tag, payload) });
-  };
+function postSync(ctx: HubContext, key: string, tag: number, payload: Uint8Array, to?: string): void {
+  const bytes = encodeSyncMessage(tag, payload);
+  ctx.channel.post(to === undefined ? { key, from: ctx.pageId, bytes } : { key, from: ctx.pageId, to, bytes });
+}
 
-  const sendStep1 = (key: string, entry: Held, to: string) => {
-    entry.step1Sent.add(to);
-    post(key, SYNC_STEP1, Y.encodeStateVector(entry.replica.doc), to);
-  };
+function sendStep1(ctx: HubContext, key: string, entry: Held, to: string): void {
+  entry.step1Sent.add(to);
+  postSync(ctx, key, SYNC_STEP1, Y.encodeStateVector(entry.replica.doc), to);
+}
 
-  const receive = (message: ReplicaMessage) => {
-    if (message.from === pageId || (message.to !== undefined && message.to !== pageId)) { return; }
-    const entry = held.get(message.key);
-    if (!entry) { return; }
-    const decoded = decodeSyncMessage(message.bytes);
-    if (!decoded) { return; }
-    const { doc } = entry.replica;
-    if (decoded.tag === SYNC_STEP1) {
-      // INVARIANT: a replica still waiting answers nothing, so pages opening at once seed from disk instead of syncing empty docs.
-      if (!entry.answering) { return; }
-      post(message.key, SYNC_STEP2, Y.encodeStateAsUpdate(doc, decoded.payload), message.from);
-      if (!entry.step1Sent.has(message.from)) { sendStep1(message.key, entry, message.from); }
-      return;
-    }
-    if (decoded.tag !== SYNC_STEP2 && decoded.tag !== SYNC_UPDATE) { return; }
-    Y.applyUpdate(doc, decoded.payload, remoteOrigin);
-    if (decoded.tag === SYNC_STEP2 && entry.waiting) {
-      entry.waiting = false;
-      entry.cancelWait();
-      entry.answering = true;
-      entry.resolve("peer");
-    }
-  };
-
-  const stopListening = channel.onMessage(receive);
-
-  const drop = (key: string, entry: Held) => {
-    if (held.get(key) !== entry) { return; }
-    held.delete(key);
+function receiveMessage(ctx: HubContext, message: ReplicaMessage): void {
+  if (message.from === ctx.pageId || (message.to !== undefined && message.to !== ctx.pageId)) { return; }
+  const entry = ctx.held.get(message.key);
+  if (!entry) { return; }
+  const decoded = decodeSyncMessage(message.bytes);
+  if (!decoded) { return; }
+  const { doc } = entry.replica;
+  if (decoded.tag === SYNC_STEP1) {
+    // INVARIANT: a replica still waiting answers nothing, so pages opening at once seed from disk instead of syncing empty docs.
+    if (!entry.answering) { return; }
+    postSync(ctx, message.key, SYNC_STEP2, Y.encodeStateAsUpdate(doc, decoded.payload), message.from);
+    if (!entry.step1Sent.has(message.from)) { sendStep1(ctx, message.key, entry, message.from); }
+    return;
+  }
+  if (decoded.tag !== SYNC_STEP2 && decoded.tag !== SYNC_UPDATE) { return; }
+  Y.applyUpdate(doc, decoded.payload, ctx.remoteOrigin);
+  if (decoded.tag === SYNC_STEP2 && entry.waiting) {
     entry.waiting = false;
     entry.cancelWait();
-    entry.detach();
-    entry.replica.doc.destroy();
-  };
-
-  function create(key: string, kind: ReplicaKind, readDisk: () => Promise<string>): Held {
-    const doc = new Y.Doc();
-    const layout = LAYOUTS[kind];
-    let resolve!: (source: "peer" | "disk") => void;
-    let reject!: (error: unknown) => void;
-    const ready = new Promise<"peer" | "disk">((done, fail) => { resolve = done; reject = fail; });
-    const entry: Held = {
-      count: 1,
-      answering: false,
-      waiting: true,
-      cancelWait: () => {},
-      resolve,
-      step1Sent: new Set(),
-      detach: () => {},
-      replica: {
-        key,
-        kind,
-        doc,
-        ready,
-        text: () => layout.read(doc),
-        replace: (text, origin) => { layout.write(doc, text, origin ?? null); },
-        release: () => {
-          if (held.get(key) !== entry) { return; }
-          entry.count -= 1;
-          if (entry.count <= 0) { drop(key, entry); }
-        },
-      },
-    };
-    const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin !== remoteOrigin) { post(key, SYNC_UPDATE, update); }
-    };
-    doc.on("update", onUpdate);
-    entry.detach = () => doc.off("update", onUpdate);
-    held.set(key, entry);
-    post(key, SYNC_STEP1, Y.encodeStateVector(doc));
-    entry.cancelWait = scheduler.after(peerWaitMs, () => {
-      if (!entry.waiting) { return; }
-      entry.waiting = false;
-      readDisk().then((text) => {
-        if (held.get(key) === entry) { Y.applyUpdate(doc, seedUpdate(kind, text), seedOrigin); }
-        entry.answering = true;
-        resolve("disk");
-      }, reject);
-    });
-    return entry;
+    entry.answering = true;
+    entry.resolve("peer");
   }
+}
+
+function dropReplica(ctx: HubContext, key: string, entry: Held): void {
+  if (ctx.held.get(key) !== entry) { return; }
+  ctx.held.delete(key);
+  entry.waiting = false;
+  entry.cancelWait();
+  entry.detach();
+  entry.replica.doc.destroy();
+}
+
+/** With no peer answering in time, seeds the replica from the disk text. */
+function startPeerWait(ctx: HubContext, key: string, entry: Held, readDisk: () => Promise<string>, reject: (error: unknown) => void): void {
+  const { doc, kind } = entry.replica;
+  entry.cancelWait = ctx.scheduler.after(ctx.peerWaitMs, () => {
+    if (!entry.waiting) { return; }
+    entry.waiting = false;
+    readDisk().then((text) => {
+      if (ctx.held.get(key) === entry) { Y.applyUpdate(doc, seedUpdate(kind, text), ctx.seedOrigin); }
+      entry.answering = true;
+      entry.resolve("disk");
+    }, reject);
+  });
+}
+
+function createHeld(ctx: HubContext, key: string, kind: ReplicaKind, readDisk: () => Promise<string>): Held {
+  const doc = new Y.Doc();
+  const layout = LAYOUTS[kind];
+  let resolve!: (source: "peer" | "disk") => void;
+  let reject!: (error: unknown) => void;
+  const ready = new Promise<"peer" | "disk">((done, fail) => { resolve = done; reject = fail; });
+  const entry: Held = {
+    count: 1,
+    answering: false,
+    waiting: true,
+    cancelWait: () => {},
+    resolve,
+    step1Sent: new Set(),
+    detach: () => {},
+    replica: {
+      key,
+      kind,
+      doc,
+      ready,
+      text: () => layout.read(doc),
+      replace: (text, origin) => { layout.write(doc, text, origin ?? null); },
+      release: () => {
+        if (ctx.held.get(key) !== entry) { return; }
+        entry.count -= 1;
+        if (entry.count <= 0) { dropReplica(ctx, key, entry); }
+      },
+    },
+  };
+  const onUpdate = (update: Uint8Array, origin: unknown) => {
+    if (origin !== ctx.remoteOrigin) { postSync(ctx, key, SYNC_UPDATE, update); }
+  };
+  doc.on("update", onUpdate);
+  entry.detach = () => doc.off("update", onUpdate);
+  ctx.held.set(key, entry);
+  postSync(ctx, key, SYNC_STEP1, Y.encodeStateVector(doc));
+  startPeerWait(ctx, key, entry, readDisk, reject);
+  return entry;
+}
+
+// CONTRACT: documents/contracts/local-sync.md#replicas
+export function createReplicaHub(options: { channel: ReplicaChannel; scheduler?: SessionScheduler; pageId?: string; peerWaitMs?: number }): ReplicaHub {
+  const ctx: HubContext = {
+    channel: options.channel,
+    scheduler: options.scheduler ?? systemScheduler,
+    pageId: options.pageId ?? globalThis.crypto.randomUUID(),
+    peerWaitMs: options.peerWaitMs ?? DEFAULT_PEER_WAIT_MS,
+    remoteOrigin: Symbol("replica-remote"),
+    seedOrigin: Symbol("replica-seed"),
+    held: new Map(),
+  };
+  const stopListening = ctx.channel.onMessage((message) => receiveMessage(ctx, message));
 
   return {
     open(key, kind, readDisk) {
-      const entry = held.get(key);
+      const entry = ctx.held.get(key);
       if (entry) {
         if (entry.replica.kind !== kind) { throw new Error(`Replica "${key}" is held as ${entry.replica.kind}, not ${kind}`); }
         entry.count += 1;
         return entry.replica;
       }
-      return create(key, kind, readDisk).replica;
+      return createHeld(ctx, key, kind, readDisk).replica;
     },
     close() {
-      for (const [key, entry] of [...held]) { drop(key, entry); }
+      for (const [key, entry] of [...ctx.held]) { dropReplica(ctx, key, entry); }
       stopListening();
     },
   };

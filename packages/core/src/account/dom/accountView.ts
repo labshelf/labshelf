@@ -113,6 +113,59 @@ function renderLeftOut(): { element: HTMLElement; show(paths: readonly string[])
   };
 }
 
+/** The storage limit in GB: its labelled row, the input and the Save button. */
+function renderLimitRow(port: AccountPort) {
+  const limit = renderNumberField({ id: "account-store-limit", min: 0, max: 10_000, step: 0.1, width: "sm" });
+  limit.control.placeholder = "Default";
+  const save = renderActionButton({
+    label: "Save", icon: "check",
+    onClick: async () => {
+      const text = limit.control.value.trim();
+      const gb = Number(text);
+      if (text === "") await port.setStorageLimit(null);
+      else if (gb > 0) await port.setStorageLimit(Math.round(gb * GB));
+    },
+  });
+  const row = renderSettingRow(
+    { label: "Limit (GB)", labelFor: limit.control.id, description: "Leave empty for the store's default." },
+    renderElement("div", { class: "settings-actions account-inline" }, limit.element, save),
+  );
+  return { row, control: limit.control, save };
+}
+
+/** The paper PDFs switch: it turns on only after the size is shown and Include chosen; `onBusy` runs when the estimate starts or ends. */
+function renderIncludePdfs(port: AccountPort, onBusy: () => void) {
+  const question = renderElement("span", { text: "" });
+  const include = renderActionButton({ label: "Include", icon: "check", primary: true, onClick: () => { confirm.hidden = true; return port.setIncludePdfs(true); } });
+  const cancel = renderActionButton({ label: "Cancel", icon: "x", onClick: async () => { confirm.hidden = true; } });
+  const confirm = renderElement("div", { class: "settings-actions account-inline" }, question, include, cancel);
+  confirm.hidden = true;
+  const estimateMessage = renderNote("settings-desc account-error", true);
+  let estimating = false;
+  const askToIncludePdfs = async (): Promise<void> => {
+    estimating = true;
+    estimateMessage.set(undefined);
+    onBusy();
+    try {
+      const { bytes } = await port.estimatePaperPdfs();
+      question.textContent = `Paper PDFs will use about ${formatStoreSize(bytes)}. Include them?`;
+      confirm.hidden = false;
+    } catch (error) {
+      estimateMessage.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      estimating = false;
+      onBusy();
+    }
+  };
+  const pdfs = renderSwitch("account-include-pdfs", "Include paper PDFs", (checked) => {
+    if (!checked) { void port.setIncludePdfs(false); return; }
+    // The switch turns on only once the user has seen the size and chosen Include.
+    pdfs.control.checked = false;
+    void askToIncludePdfs();
+  });
+  return { pdfs, confirm, estimateMessage, controls: [pdfs.control, include, cancel], estimating: () => estimating };
+}
+
 /**
  * The store of a remote library that is on: where it is and how full, what the last sync left out, the limit,
  * the paper PDFs switch (asked first with their size) and the move between Durable Object and R2.
@@ -124,63 +177,22 @@ function renderStoreDetails(port: AccountPort): AccountSection {
   const full = renderNote("account-full", true);
   const leftOut = renderLeftOut();
 
-  const limit = renderNumberField({ id: "account-store-limit", min: 0, max: 10_000, step: 0.1, width: "sm" });
-  limit.control.placeholder = "Default";
-  const saveLimit = renderActionButton({
-    label: "Save", icon: "check",
-    onClick: async () => {
-      const text = limit.control.value.trim();
-      const gb = Number(text);
-      if (text === "") await port.setStorageLimit(null);
-      else if (gb > 0) await port.setStorageLimit(Math.round(gb * GB));
-    },
-  });
-
-  const question = renderElement("span", { text: "" });
-  const include = renderActionButton({ label: "Include", icon: "check", primary: true, onClick: () => { confirm.hidden = true; return port.setIncludePdfs(true); } });
-  const cancel = renderActionButton({ label: "Cancel", icon: "x", onClick: async () => { confirm.hidden = true; } });
-  const confirm = renderElement("div", { class: "settings-actions account-inline" }, question, include, cancel);
-  confirm.hidden = true;
-  const estimateMessage = renderNote("settings-desc account-error", true);
-  let busy = false;
-  let estimating = false;
-  const askToIncludePdfs = async (): Promise<void> => {
-    estimating = true;
-    estimateMessage.set(undefined);
-    syncDisabled();
-    try {
-      const { bytes } = await port.estimatePaperPdfs();
-      question.textContent = `Paper PDFs will use about ${formatStoreSize(bytes)}. Include them?`;
-      confirm.hidden = false;
-    } catch (error) {
-      estimateMessage.set(error instanceof Error ? error.message : String(error));
-    } finally {
-      estimating = false;
-      syncDisabled();
-    }
-  };
-  const pdfs = renderSwitch("account-include-pdfs", "Include paper PDFs", (checked) => {
-    if (!checked) { void port.setIncludePdfs(false); return; }
-    // The switch turns on only once the user has seen the size and chosen Include.
-    pdfs.control.checked = false;
-    void askToIncludePdfs();
-  });
+  const limit = renderLimitRow(port);
+  const include = renderIncludePdfs(port, () => syncDisabled());
 
   const moveHint = renderElement("p", { class: "settings-desc", text: MOVE_TO_R2_HINT });
   const toR2 = renderActionButton({ label: "Move to R2", icon: "cloud", onClick: () => port.moveStore("r2") });
   const toDurableObject = renderActionButton({ label: "Move to Durable Object", icon: "cloud", onClick: () => port.moveStore("do") });
 
-  const controls = [limit.control, saveLimit, pdfs.control, include, cancel, toR2, toDurableObject];
-  function syncDisabled(): void { for (const control of controls) control.disabled = busy || estimating; }
+  let busy = false;
+  const controls = [limit.control, limit.save, ...include.controls, toR2, toDurableObject];
+  function syncDisabled(): void { for (const control of controls) control.disabled = busy || include.estimating(); }
 
   const element = renderElement("div", { class: "account-store" },
     store, usage.element, warning.element, full.element, leftOut.element,
-    renderSettingRow(
-      { label: "Limit (GB)", labelFor: limit.control.id, description: "Leave empty for the store's default." },
-      renderElement("div", { class: "settings-actions account-inline" }, limit.element, saveLimit),
-    ),
-    renderSettingRow({ description: "Send the PDFs of your papers too, so they open from labshelf.org/open/." }, pdfs.element),
-    confirm, estimateMessage.element,
+    limit.row,
+    renderSettingRow({ description: "Send the PDFs of your papers too, so they open from labshelf.org/open/." }, include.pdfs.element),
+    include.confirm, include.estimateMessage.element,
     moveHint, renderElement("div", { class: "settings-actions" }, toR2, toDurableObject),
   );
   let shownLimit: string | undefined;
@@ -199,8 +211,8 @@ function renderStoreDetails(port: AccountPort): AccountSection {
     const limitText = String(Number((details.limit / GB).toFixed(1)));
     if (shownLimit === undefined || limit.control.value === shownLimit) limit.control.value = limitText;
     shownLimit = limitText;
-    pdfs.control.checked = details.includePdfs;
-    if (details.includePdfs) confirm.hidden = true;
+    include.pdfs.control.checked = details.includePdfs;
+    if (details.includePdfs) include.confirm.hidden = true;
     moveHint.hidden = toR2.hidden = details.store !== "do";
     toDurableObject.hidden = details.store !== "r2";
   };

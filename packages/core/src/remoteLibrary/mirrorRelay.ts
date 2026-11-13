@@ -1,6 +1,7 @@
 /** The client of the relay Worker's owner routes under /mirror/*: the owner email, the writer lease, row batches, single
  * files, the status and settings, the edits made on /open/ and the clear that turning Remote access off sends. Every call
  * carries the owner secret as bearer and rejects with a MirrorRefusal when the Worker refuses. */
+import { isNumber } from "../guards/index.js";
 import { parseJsonObject } from "../json/index.js";
 import type { MirrorKind } from "./mirrorState.js";
 
@@ -49,35 +50,35 @@ async function refusal(response: Response, route: string): Promise<MirrorRefusal
   return new MirrorRefusal(`The relay refused ${route}: ${response.status}${code ? ` (${code})` : ""}`, response.status, code, reason);
 }
 
-const isCount = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0;
+/** A finite, non-negative number; unlike the shared isCount it accepts fractions. */
+const isAmount = (value: unknown): value is number => isNumber(value) && value >= 0;
 
 function parseStatus(text: string): MirrorStatus {
   const body = parseJsonObject(text);
   const r2 = body?.["r2"];
   const { generation, store, used, limit, includePdfs, rows, edits } = body ?? {};
-  if (typeof generation !== "string" || generation === "" || (store !== "do" && store !== "r2") || !isCount(used) || !isCount(limit)
-    || typeof includePdfs !== "boolean" || !isCount(rows) || !isCount(edits) || typeof r2 !== "object" || r2 === null) {
+  if (typeof generation !== "string" || generation === "" || (store !== "do" && store !== "r2") || !isAmount(used) || !isAmount(limit)
+    || typeof includePdfs !== "boolean" || !isAmount(rows) || !isAmount(edits) || typeof r2 !== "object" || r2 === null) {
     throw new Error("The relay answered an unreadable Mirror status.");
   }
   const { bound, month, operations } = r2 as Record<string, unknown>;
-  if (typeof bound !== "boolean" || typeof month !== "string" || !isCount(operations)) { throw new Error("The relay answered an unreadable Mirror status."); }
+  if (typeof bound !== "boolean" || typeof month !== "string" || !isAmount(operations)) { throw new Error("The relay answered an unreadable Mirror status."); }
   return { generation, store, used, limit, includePdfs, rows, edits, r2: { bound, month, operations } };
 }
 
 function parseEdit(value: unknown): MirrorEdit | undefined {
   if (typeof value !== "object" || value === null) { return undefined; }
   const { path, base, hash, deleted, at } = value as Record<string, unknown>;
-  if (typeof path !== "string" || typeof base !== "string" || typeof hash !== "string" || !isCount(at)) { return undefined; }
+  if (typeof path !== "string" || typeof base !== "string" || typeof hash !== "string" || !isAmount(at)) { return undefined; }
   return { path, base, hash, deleted: deleted === true || deleted === 1, at };
 }
 
 /** The route of a library-relative path, each segment URL-encoded. */
 const fileRoute = (prefix: string, path: string): string => `${prefix}/${path.split("/").map(encodeURIComponent).join("/")}`;
 
-export function createMirrorRelay(options: { relayUrl: string; ownerSecret: string; deviceId: string; fetch: typeof fetch }): MirrorRelay {
-  const base = options.relayUrl.replace(/\/+$/, "");
-
-  async function call(method: string, route: string, body?: unknown, extra?: { headers: Record<string, string>; bytes: Uint8Array }): Promise<Response> {
+/** The authorised request to one relay route; a refusal throws. */
+function createRelayCall(options: { ownerSecret: string; fetch: typeof fetch }, base: string) {
+  return async function call(method: string, route: string, body?: unknown, extra?: { headers: Record<string, string>; bytes: Uint8Array }): Promise<Response> {
     const headers: Record<string, string> = { authorization: `Bearer ${options.ownerSecret}` };
     const init: RequestInit = { method, headers };
     if (extra) {
@@ -90,7 +91,13 @@ export function createMirrorRelay(options: { relayUrl: string; ownerSecret: stri
     const response = await options.fetch(`${base}${route}`, init);
     if (!response.ok) { throw await refusal(response, `${method} ${route}`); }
     return response;
-  }
+  };
+}
+
+export function createMirrorRelay(options: { relayUrl: string; ownerSecret: string; deviceId: string; fetch: typeof fetch }): MirrorRelay {
+  const base = options.relayUrl.replace(/\/+$/, "");
+
+  const call = createRelayCall(options, base);
 
   return {
     async putOwner(email) {

@@ -1,94 +1,19 @@
 // The workspace's selection, drawing, modes, cursor and builds: what shows on the stage and panels, and how the text and the build state reach them.
 import { renderElement } from "../../../ui/dom/index.js";
-import {
-  findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, overflowingPosterBlocks, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape,
-  readableSourceTitle, restoreSourceDeckPath, sourceDeckBreadcrumb, sourceDeckSpanAt, sourceDeckSpans, sourceDeckUnits, type SourceDeckPath, type SourceDeckRange,
-} from "../../index.js";
-import { deriveLineOffsets } from "../../../text/lines.js";
+import { findSourceDeckNode, findSourceDeckPathAt, findSourceDeckPathAtLine, overflowingPosterBlocks, overfullSlides, spilledTypstSlides, readSourceDeckNotes, readSourceDeckShape, readableSourceTitle, restoreSourceDeckPath, sourceDeckBreadcrumb, type SourceDeckPath } from "../../index.js";
 import type { PdfDeck } from "../pdfDeck.js";
 import type { PageSection } from "./linking.js";
 import type { SlideGrid, StripUnit } from "./slideGrid.js";
 import type { StageOutline } from "./stage.js";
 import type { DeckBuildState, DeckWorkspaceMode } from "./types.js";
 import { loadIncludes, projectTree, textOf } from "./workspaceFiles.js";
-import { codeFirst, selectedNode, slideIndex, unitPath, type WorkspaceState } from "./workspaceState.js";
+import { applyFocus, codeFirst, selectSpanAt, selectedNode, slideIndex, unitPath, type WorkspaceState } from "./workspaceState.js";
 
 export function flash(ws: WorkspaceState, message: string): void {
   const { stage } = ws.ui;
   stage.setNote(message);
   clearTimeout(ws.flashTimer);
   ws.flashTimer = setTimeout(() => stage.setNote(""), 4000);
-}
-
-/** The spans of the main file's slides (talk) or blocks (poster), as the code shows them one at a time. */
-const spansOf = (ws: WorkspaceState): ReturnType<typeof sourceDeckSpans> => sourceDeckSpans(ws.format, ws.text, sourceDeckUnits(ws.kind, ws.tree));
-
-/** The whole line of a main-file section command, as the code shows a section divider. */
-function sectionSpan(ws: WorkspaceState, section: PageSection): SourceDeckRange | undefined {
-  const starts = deriveLineOffsets(ws.text);
-  const from = starts[section.line - 1];
-  return from === undefined ? undefined : [from, (starts[section.line] ?? ws.text.length + 1) - 1];
-}
-
-/**
- * The lines the code shows and where a cursor outside them goes: the selected section command, the preamble, or the selected slide's or
- * block's span; "elsewhere" when it is in an included file, which opens in its own editor.
- */
-function focusTarget(ws: WorkspaceState): { span: SourceDeckRange; at: number } | "elsewhere" | undefined {
-  if (ws.section) {
-    if (ws.section.file !== undefined) return "elsewhere";
-    const span = sectionSpan(ws, ws.section);
-    return span && { span, at: span[0] };
-  }
-  const spans = spansOf(ws);
-  const path = unitPath(ws);
-  const unit = findSourceDeckNode(ws.tree, path);
-  if (!ws.preamble && unit?.file !== undefined) return "elsewhere";
-  if (!spans) return undefined;
-  if (ws.preamble) return { span: spans.preamble, at: 0 };
-  const key = path.join(".");
-  const span = spans.units.find((u) => u.path.join(".") === key)?.range;
-  return span && { span, at: unit?.range[0] ?? span[0] };
-}
-
-/**
- * A talk or poster edited in its code: the editor shows only the selected section's, slide's or block's lines (or the preamble's), and a
- * cursor outside them moves to the unit's start. With File the whole file shows and a pick brings the cursor to the unit. Grid shows the whole file.
- */
-function applyFocus(ws: WorkspaceState): void {
-  const { editing } = ws.ports;
-  if (!editing.focus) return;
-  if (!codeFirst(ws)) { editing.focus(null); return; }
-  // The text event of an edit has not arrived yet: the spans would be of the old text, so the next render focuses.
-  if (ws.text !== editing.text()) return;
-  const target = focusTarget(ws);
-  if (target === "elsewhere") return;
-  if (!target) { editing.focus(null); return; }
-  const { span: [from, to], at } = target;
-  if (ws.wholeFile) {
-    editing.focus(null);
-    const cursor = editing.cursor();
-    if (cursor < from || cursor > to) { editing.select(at, at); ws.echo = editing.cursor(); }
-    return;
-  }
-  const before = editing.cursor();
-  const after = editing.focus({ from, to }, at);
-  if (after !== before) ws.echo = after;
-}
-
-/**
- * In a talk's or poster's code, selects the slide or block (or the preamble) whose span holds the editor's offset; a cursor on the selected
- * section command keeps it. False when the file has no unit of its own.
- */
-function selectSpanAt(ws: WorkspaceState, offset: number): boolean {
-  const section = ws.section && sectionSpan(ws, ws.section);
-  if (section && offset >= section[0] && offset <= section[1]) return true;
-  const at = sourceDeckSpanAt(spansOf(ws), offset);
-  if (at === undefined) return false;
-  ws.section = undefined;
-  ws.preamble = at === "preamble";
-  if (at !== "preamble") ws.selected = at;
-  return true;
 }
 
 /** Shows the preamble in a talk's or poster's code. */

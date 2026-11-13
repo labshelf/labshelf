@@ -38,69 +38,69 @@ function reasonOf(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+async function turnOn(deps: RemoteAccessDeps): Promise<RemoteAccessResult> {
+  let email: string | undefined;
+  try {
+    email = await deps.readEmail();
+  } catch (error) {
+    return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not read your Cloudflare account.") };
+  }
+  if (!email) { return { ok: false, reason: "needs_sign_in", message: SIGN_IN_MESSAGE }; }
+
+  try {
+    await deps.relay.putOwner(email);
+  } catch (error) {
+    return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the owner email was not saved.")}` };
+  }
+  try {
+    if (await deps.directory.self() === undefined) { await deps.directory.register(); }
+    await deps.runner.run();
+  } catch (error) {
+    return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not be turned on.") };
+  }
+  return { ok: true };
+}
+
+async function turnOff(deps: RemoteAccessDeps): Promise<RemoteAccessResult> {
+  try {
+    await deps.relay.clear();
+  } catch (error) {
+    return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the Mirror was not cleared.")}` };
+  }
+  try {
+    await deps.state.clear();
+  } catch (error) {
+    return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not be turned off.") };
+  }
+  return { ok: true };
+}
+
+/** Saves the settings, then (a store move) drops the device table, then syncs; a refusal answers before anything else runs. */
+async function change(deps: RemoteAccessDeps, settings: MirrorSettings, clearTable: boolean): Promise<RemoteAccessResult> {
+  try {
+    await deps.relay.setSettings(settings);
+  } catch (error) {
+    if (error instanceof MirrorRefusal && error.code === "noBucket") { return { ok: false, reason: "no_bucket", message: NO_BUCKET_MESSAGE }; }
+    if (error instanceof MirrorRefusal && error.code === "malformed") { return { ok: false, reason: "failed", message: MALFORMED_LIMIT_MESSAGE }; }
+    return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the setting was not saved.")}` };
+  }
+  try {
+    if (clearTable) { await deps.state.clear(); }
+    await deps.runner.run();
+  } catch (error) {
+    return { ok: false, reason: "failed", message: reasonOf(error, "The remote library could not be synced.") };
+  }
+  return { ok: true };
+}
+
 export function createRemoteAccess(deps: RemoteAccessDeps): RemoteAccess {
-  async function turnOn(): Promise<RemoteAccessResult> {
-    let email: string | undefined;
-    try {
-      email = await deps.readEmail();
-    } catch (error) {
-      return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not read your Cloudflare account.") };
-    }
-    if (!email) { return { ok: false, reason: "needs_sign_in", message: SIGN_IN_MESSAGE }; }
-
-    try {
-      await deps.relay.putOwner(email);
-    } catch (error) {
-      return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the owner email was not saved.")}` };
-    }
-    try {
-      if (await deps.directory.self() === undefined) { await deps.directory.register(); }
-      await deps.runner.run();
-    } catch (error) {
-      return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not be turned on.") };
-    }
-    return { ok: true };
-  }
-
-  async function turnOff(): Promise<RemoteAccessResult> {
-    try {
-      await deps.relay.clear();
-    } catch (error) {
-      return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the Mirror was not cleared.")}` };
-    }
-    try {
-      await deps.state.clear();
-    } catch (error) {
-      return { ok: false, reason: "failed", message: reasonOf(error, "Remote access could not be turned off.") };
-    }
-    return { ok: true };
-  }
-
-  /** Saves the settings, then (a store move) drops the device table, then syncs; a refusal answers before anything else runs. */
-  async function change(settings: MirrorSettings, clearTable: boolean): Promise<RemoteAccessResult> {
-    try {
-      await deps.relay.setSettings(settings);
-    } catch (error) {
-      if (error instanceof MirrorRefusal && error.code === "noBucket") { return { ok: false, reason: "no_bucket", message: NO_BUCKET_MESSAGE }; }
-      if (error instanceof MirrorRefusal && error.code === "malformed") { return { ok: false, reason: "failed", message: MALFORMED_LIMIT_MESSAGE }; }
-      return { ok: false, reason: "no_relay", message: `Remote access could not reach your relay: ${reasonOf(error, "the setting was not saved.")}` };
-    }
-    try {
-      if (clearTable) { await deps.state.clear(); }
-      await deps.runner.run();
-    } catch (error) {
-      return { ok: false, reason: "failed", message: reasonOf(error, "The remote library could not be synced.") };
-    }
-    return { ok: true };
-  }
-
   return {
-    turnOn,
-    turnOff,
+    turnOn: () => turnOn(deps),
+    turnOff: () => turnOff(deps),
     status: () => deps.relay.status(),
-    setIncludePdfs: (on) => change({ includePdfs: on }, false),
-    setLimit: (limit) => change({ limit }, false),
-    moveStore: (store) => change({ store }, true),
+    setIncludePdfs: (on) => change(deps, { includePdfs: on }, false),
+    setLimit: (limit) => change(deps, { limit }, false),
+    moveStore: (store) => change(deps, { store }, true),
     estimatePaperPdfs: async () => estimatePaperPdfs(await deps.selection()),
   };
 }

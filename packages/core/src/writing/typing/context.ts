@@ -54,6 +54,25 @@ function scanLatexCommand(text: string, i: number, pos: number, stack: Frame[]):
   return j;
 }
 
+/** A `\\(`, `\\[`, `\\)` or `\\]` at `i`: opens or closes a math frame and returns the next index. */
+function scanLatexEscape(text: string, i: number, stack: Frame[]): number {
+  const next = text[i + 1];
+  const top = stack.at(-1);
+  if ((next === "(" || next === "[") && top?.kind !== "math") stack.push({ kind: "math", close: next === "(" ? "\\)" : "\\]" });
+  else if ((next === ")" || next === "]") && top?.kind === "math" && top.close === `\\${next}`) stack.pop();
+  return i + 2;
+}
+
+/** A `$` or `$$` at `i`: closes the open dollar math or opens one, and returns the next index. */
+function scanLatexDollar(text: string, i: number, pos: number, stack: Frame[]): number {
+  const top = stack.at(-1);
+  const double = text[i + 1] === "$" && i + 1 < pos;
+  if (top?.kind === "math" && top.close === "$$") { stack.pop(); return i + (double ? 2 : 1); }
+  if (top?.kind === "math" && top.close === "$") { stack.pop(); return i + 1; }
+  stack.push({ kind: "math", close: double ? "$$" : "$" });
+  return i + (double ? 2 : 1);
+}
+
 function scanLatex(text: string, pos: number): TypingScan {
   const stack: Frame[] = [];
   let lineStart = 0;
@@ -77,9 +96,7 @@ function scanLatex(text: string, pos: number): TypingScan {
         i = after;
         continue;
       }
-      if ((next === "(" || next === "[") && top?.kind !== "math") stack.push({ kind: "math", close: next === "(" ? "\\)" : "\\]" });
-      else if ((next === ")" || next === "]") && top?.kind === "math" && top.close === `\\${next}`) stack.pop();
-      i += 2;
+      i = scanLatexEscape(text, i, stack);
       continue;
     }
     if (c === "%") {
@@ -89,11 +106,7 @@ function scanLatex(text: string, pos: number): TypingScan {
       continue;
     }
     if (c === "$") {
-      const double = text[i + 1] === "$" && i + 1 < pos;
-      if (top?.kind === "math" && top.close === "$$") { stack.pop(); i += double ? 2 : 1; continue; }
-      if (top?.kind === "math" && top.close === "$") { stack.pop(); i += 1; continue; }
-      stack.push({ kind: "math", close: double ? "$$" : "$" });
-      i += double ? 2 : 1;
+      i = scanLatexDollar(text, i, pos, stack);
       continue;
     }
     if (c === "\n") {

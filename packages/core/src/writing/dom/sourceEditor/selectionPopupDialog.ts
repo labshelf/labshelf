@@ -1,6 +1,9 @@
-// The Customize dialog of a text bubble (the source editor's selection popup, the notes' bubble): when it opens on a selection, whether a click opens it, whether it suggests actions, and one switch per hideable button under its group's heading, each applied as it is changed.
+// The selection popup's shared parts: its open state and edit (below the dialog), and the Customize dialog of a text bubble (the source editor's selection popup, the notes' bubble): when it opens on a selection, whether a click opens it, whether it suggests actions, and one switch per hideable button under its group's heading, each applied as it is changed.
+import { EditorSelection, StateEffect, StateField } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import { mountOverlay, renderElement } from "../../../ui/dom/index.js";
 import type { SelectionPopupPrefs, SelectionPopupTrigger } from "../../../index.js";
+import { reviewEdit } from "./review.js";
 
 /** Buttons the user can hide, under one heading (Selection, Insert). */
 export interface PopupButtonGroup {
@@ -70,4 +73,33 @@ export function openSelectionPopupDialog(options: SelectionPopupDialogOptions): 
   const overlay = mountOverlay(dialog, dismiss);
   close.addEventListener("click", dismiss);
   close.focus();
+}
+
+// The state of the selection popup of the source editor: where it is open and in which mode, the effects that open and close it, and the edit
+// every action of it dispatches (which closes it).
+export interface PopupState {
+  from: number;
+  to: number;
+  /** selection: on selected text; token: a click on a citation, reference or drawing, its actions; click: a click elsewhere, insertions at the cursor. */
+  mode: "selection" | "token" | "click";
+}
+
+export const openPopup = StateEffect.define<PopupState>();
+export const closePopup = StateEffect.define<null>();
+/** Marks the popup's own edits and moves, which close it without counting as the user's selection change. */
+export const popupField = StateField.define<PopupState | null>({
+  create: () => null,
+  update(value, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(openPopup)) return effect.value;
+      if (effect.is(closePopup)) return null;
+    }
+    if (value && (tr.docChanged || tr.selection)) return null;
+    return value;
+  },
+});
+
+export function dispatchEdit(view: EditorView, changes: { from: number; to: number; insert: string }, selection?: EditorSelection | { anchor: number; head?: number }): void {
+  view.dispatch({ changes, ...(selection && { selection }), effects: closePopup.of(null), scrollIntoView: true, userEvent: "input", annotations: reviewEdit.of(true) });
+  view.focus();
 }

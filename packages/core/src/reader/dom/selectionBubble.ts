@@ -58,14 +58,23 @@ export class SelectionBubble {
     private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void,
     openCite?: (citation: { page: number; quote: string }) => void,
   ) {
-    const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
-    const colors = ANNOTATION_COLORS.map((color) => {
+    this.renderButtons(openCite);
+    this.bindDocumentEvents();
+    ctx.container.addEventListener("pointerup", (event) => { setTimeout(() => this.placeNote(event), 0); });
+    ctx.container.addEventListener("scroll", () => this.hide(), { passive: true });
+  }
+
+  private colorButtons(): HTMLElement[] {
+    return ANNOTATION_COLORS.map((color) => {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => { this.setColor(color); this.highlight(color); });
       return btn;
     });
-    const add: PillButton[] = addToNote ? [{ label: `Add to ${QMD_VOCABULARY.item}`, icon: "note", run: () => this.highlight(ANNOTATION_COLORS[0]!, true) }] : [];
-    const cite: PillButton = {
+  }
+
+  private citeButton(openCite?: (citation: { page: number; quote: string }) => void): PillButton {
+    const mod = this.ctx.boot.isMac ? "Cmd" : "Ctrl";
+    return {
       label: openCite ? "Cite…" : `Copy with citation (${mod}+Shift+C)`, icon: "quote",
       run: (button) => {
         if (!openCite) { this.copyWithCitation(); return; }
@@ -79,18 +88,24 @@ export class SelectionBubble {
         }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
       },
     };
+  }
+
+  private renderButtons(openCite?: (citation: { page: number; quote: string }) => void): void {
+    const add: PillButton[] = this.addToNote ? [{ label: `Add to ${QMD_VOCABULARY.item}`, icon: "note", run: () => this.highlight(ANNOTATION_COLORS[0]!, true) }] : [];
     // In a preview, View in source and Comment are hidden until the host's roots say the shown PDF maps to its source; their separator hides with them.
-    const source: PillButton[] = ctx.boot.preview ? [
+    const source: PillButton[] = this.ctx.boot.preview ? [
       { label: "View in source", icon: "code", run: () => this.viewInSource() },
-      ...(commentOn ? [{ label: "Comment on the source", icon: "message" as const, run: () => this.comment() }] : []),
+      ...(this.commentOn ? [{ label: "Comment on the source", icon: "message" as const, run: () => this.comment() }] : []),
     ] : [];
-    renderPillBar([colors, add, [cite], source], { label: "Selection", pill: this.el });
+    renderPillBar([this.colorButtons(), add, [this.citeButton(openCite)], source], { label: "Selection", pill: this.el });
     if (source.length > 0) {
       const buttons = [...this.el.querySelectorAll<HTMLElement>(".ls-pill-btn")].slice(-source.length);
       this.sourceLinked = [buttons[0]!.previousElementSibling as HTMLElement, ...buttons];
       this.setSourceLinked(false);
     }
+  }
 
+  private bindDocumentEvents(): void {
     // Keep the selection alive while the bubble is being clicked.
     this.el.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -110,8 +125,6 @@ export class SelectionBubble {
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") { this.setTool(null); }
     });
-    ctx.container.addEventListener("pointerup", (event) => { setTimeout(() => this.placeNote(event), 0); });
-    ctx.container.addEventListener("scroll", () => this.hide(), { passive: true });
   }
 
   /**
