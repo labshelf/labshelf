@@ -7,7 +7,6 @@ import {
   ReaderHostController,
   answerNoteFileRequest,
   createPaperFiles,
-  normalizeReaderPrefs,
   type ExportAnnotationsPorts,
   type HostToWebview,
   type ILogger,
@@ -22,7 +21,6 @@ import {
   type ReaderHostPorts,
   type CiteReply,
   type CiteRequest,
-  type ReaderPrefs,
   type ReaderSidecarStore,
   type ReaderThemeStore,
   type RunCellPort,
@@ -30,7 +28,8 @@ import {
 } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
-import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
+import { followPaperNotes, followReaderSettings, getReaderPrefs, getReaderViewColumn } from "./followNotes.js";
+import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -95,32 +94,6 @@ export function createSidecarChangeSender(events: LibraryEvents, paperId: string
       case "customThemes": break;
     }
   };
-}
-
-const READER_CONFIG_SECTION = "labshelf.reader";
-
-const PREF_KEYS: readonly (keyof ReaderPrefs)[] = [
-  "vimKeys", "defaultZoom", "toolbarAutoHide", "restorePosition", "hoverPreviews", "hoverDelayMs", "citationStyle",
-];
-
-/**
- * Settings are user-editable JSON, so every value is validated (shared normalizeReaderPrefs) and falls back to its default.
- * @returns the current reader preferences.
- */
-function getReaderPrefs(): ReaderPrefs {
-  const cfg = vscode.workspace.getConfiguration(READER_CONFIG_SECTION);
-  const raw: Record<string, unknown> = {};
-  for (const key of PREF_KEYS) { raw[key] = cfg.get<unknown>(key); }
-  return normalizeReaderPrefs(raw);
-}
-
-/**
- * Whether the reader opens beside the current editor (ViewColumn.Two) or full-width in the active group (default).
- * @returns the view column to open the reader panel in.
- */
-function getReaderViewColumn(): vscode.ViewColumn {
-  const beside = vscode.workspace.getConfiguration(READER_CONFIG_SECTION).get<unknown>("openBeside");
-  return beside === true ? vscode.ViewColumn.Two : vscode.ViewColumn.Active;
 }
 
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
@@ -318,12 +291,12 @@ export class ReaderPanel {
   }
 
   private _subscribe(source: ReaderSource): void {
-    this._disposables.push(onAutoReaderThemeChange((theme) => {
-      this.controller.onAutoThemeChange(theme);
-    }));
-    this._disposables.push(vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration(READER_CONFIG_SECTION)) { this.controller.onPrefsChange(); }
-    }));
+    this._disposables.push(...followReaderSettings(this.controller));
+
+    // The reader's notes follow the paper's notes.qmd, whichever editor changes it; refreshNotes is deduped.
+    if (source.notes && !source.preview) {
+      this._disposables.push(followPaperNotes(source.paper.path, () => void this.controller.refreshNotes()));
+    }
 
     this._panel.onDidChangeViewState((e) => {
       if (e.webviewPanel.active) {
