@@ -30,9 +30,9 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, moveReaderIntoLibrary, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
-import { followLiveNotes } from "./liveNotes";
+import { followLiveNotes } from "../../localSync/liveFiles";
 import { readPageLiveFiles } from "../../storage/libraryFileSystem";
-import { createReaderCite } from "./citeInProject";
+import { createReaderCite } from "../../writing";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.

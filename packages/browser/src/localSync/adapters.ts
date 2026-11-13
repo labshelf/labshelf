@@ -1,6 +1,6 @@
 // The browser's ports for local sync: the replica channel over a BroadcastChannel, the writer lock over Web Locks, the
 // held-lock query, document visibility and the writer's file calls over the LibraryFileSystem.
-import type { FileStat, LibraryFileSystem, ReplicaChannel, ReplicaMessage, WriterFiles, WriterLock, WriterVisibility } from "@labshelf/core";
+import { isAbortError, type FileStat, type LibraryFileSystem, type ReplicaChannel, type ReplicaMessage, type WriterFiles, type WriterLock, type WriterVisibility } from "@labshelf/core";
 
 type MessageListener = (event: MessageEvent) => void;
 
@@ -37,10 +37,6 @@ export function createBroadcastReplicaChannel(name: string, create: (name: strin
       channel.close();
     },
   };
-}
-
-function isAbortError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { name?: unknown }).name === "AbortError";
 }
 
 // INVARIANT: the lock is held while the request callback's promise is pending; cancel resolves it or aborts the wait.

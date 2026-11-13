@@ -32,12 +32,7 @@ export function createCloudflareEmailCache(read: (relayUrl: string) => Promise<s
   };
 }
 
-/**
- * Runs the Mirror on start and a delay after the last change, never twice at once; a change during a run schedules one more run after it.
- * With `pull`, it also pulls the edits made on /open/ every `pullMs` while on, in the same queue: a pull due during a run is skipped,
- * since every run applies the edits first.
- */
-export function createMirrorTrigger(deps: {
+type MirrorTriggerDeps = {
   isOn(): boolean;
   run(): Promise<unknown>;
   pull?: () => Promise<unknown>;
@@ -45,18 +40,20 @@ export function createMirrorTrigger(deps: {
   pullMs?: number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
-}): { changed(): void; start(): void; dispose(): void } {
-  const delayMs = deps.delayMs ?? MIRROR_DELAY_MS;
-  const pullMs = deps.pullMs ?? EDITS_PULL_MS;
-  const setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
-  const clearTimer = deps.clearTimer ?? ((handle) => { clearTimeout(handle as ReturnType<typeof setTimeout>); });
+};
+
+type TimerOps = { setTimer: (fn: () => void, ms: number) => unknown; clearTimer: (handle: unknown) => void };
+
+/** The one-job-at-a-time queue: a delayed run after the last change, and a change during a job schedules one more run after it. */
+function createRunQueue(deps: Pick<MirrorTriggerDeps, "isOn" | "run">, delayMs: number, timers: TimerOps): {
+  changed(): void; runNow(): Promise<void>; runPull(pull: () => Promise<unknown>): Promise<void>; isDisposed(): boolean; dispose(): void;
+} {
   let timer: unknown;
-  let pullTimer: unknown;
   let running = false;
   let again = false;
   let disposed = false;
 
-  const stopTimer = (): void => { if (timer !== undefined) { clearTimer(timer); timer = undefined; } };
+  const stopTimer = (): void => { if (timer !== undefined) { timers.clearTimer(timer); timer = undefined; } };
 
   const runJob = async (job: () => Promise<unknown>): Promise<void> => {
     running = true;
@@ -81,19 +78,7 @@ export function createMirrorTrigger(deps: {
 
   const schedule = (): void => {
     stopTimer();
-    timer = setTimer(() => { timer = undefined; void runNow(); }, delayMs);
-  };
-
-  const schedulePull = (): void => {
-    const pull = deps.pull;
-    if (!pull || disposed) { return; }
-    pullTimer = setTimer(() => {
-      pullTimer = undefined;
-      void (async () => {
-        if (!disposed && !running && deps.isOn()) { await runJob(pull); }
-        schedulePull();
-      })();
-    }, pullMs);
+    timer = timers.setTimer(() => { timer = undefined; void runNow(); }, delayMs);
   };
 
   return {
@@ -102,15 +87,51 @@ export function createMirrorTrigger(deps: {
       if (running) { again = true; }
       schedule();
     },
+    runNow,
+    runPull: async (pull) => {
+      if (!disposed && !running && deps.isOn()) { await runJob(pull); }
+    },
+    isDisposed: () => disposed,
+    dispose: () => { disposed = true; stopTimer(); },
+  };
+}
+
+/**
+ * Runs the Mirror on start and a delay after the last change, never twice at once; a change during a run schedules one more run after it.
+ * With `pull`, it also pulls the edits made on /open/ every `pullMs` while on, in the same queue: a pull due during a run is skipped,
+ * since every run applies the edits first.
+ */
+export function createMirrorTrigger(deps: MirrorTriggerDeps): { changed(): void; start(): void; dispose(): void } {
+  const pullMs = deps.pullMs ?? EDITS_PULL_MS;
+  const timers: TimerOps = {
+    setTimer: deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms)),
+    clearTimer: deps.clearTimer ?? ((handle) => { clearTimeout(handle as ReturnType<typeof setTimeout>); }),
+  };
+  const queue = createRunQueue(deps, deps.delayMs ?? MIRROR_DELAY_MS, timers);
+  let pullTimer: unknown;
+
+  const schedulePull = (): void => {
+    const pull = deps.pull;
+    if (!pull || queue.isDisposed()) { return; }
+    pullTimer = timers.setTimer(() => {
+      pullTimer = undefined;
+      void (async () => {
+        await queue.runPull(pull);
+        schedulePull();
+      })();
+    }, pullMs);
+  };
+
+  return {
+    changed: queue.changed,
     start: () => {
-      if (disposed) { return; }
+      if (queue.isDisposed()) { return; }
       if (pullTimer === undefined) { schedulePull(); }
-      void runNow();
+      void queue.runNow();
     },
     dispose: () => {
-      disposed = true;
-      stopTimer();
-      if (pullTimer !== undefined) { clearTimer(pullTimer); pullTimer = undefined; }
+      queue.dispose();
+      if (pullTimer !== undefined) { timers.clearTimer(pullTimer); pullTimer = undefined; }
     },
   };
 }
