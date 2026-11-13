@@ -10,6 +10,7 @@ import type { CellHosts } from "../../activation/index.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { EditorPrefsHost } from "../sourceEditor/index.js";
 import type { NotesEditorInbound, NotesEditorOutbound } from "./protocol.js";
+import { createAutosave, type DiskMerge } from "../../localSync/index.js";
 
 export const NOTES_EDITOR_VIEW_TYPE = "labshelf.notesEditor";
 const MODULE = "writing/notesEditor";
@@ -29,6 +30,8 @@ export interface NotesEditorProviderDeps {
   editorPrefs?: Pick<EditorPrefsHost, "notePopup" | "setNotePopup" | "onNotePopupChange">;
   /** Opens the paper a labshelf: link names, at its page. */
   openPaperLink?(href: string): Promise<void>;
+  /** Takes a disk change of the open notes file into its dirty document by a merge. */
+  diskMerge?: DiskMerge;
 }
 
 /** <extension>/dist/notesEditor, for localResourceRoots. */
@@ -126,6 +129,26 @@ async function openLink(deps: NotesEditorProviderDeps, href: string): Promise<vo
   if (uri.scheme === "http" || uri.scheme === "https" || uri.scheme === "mailto") { await vscode.env.openExternal(uri); }
 }
 
+/** Applies the page's item edits one after another, each computed on the text the previous one left, and schedules the autosave; a failed edit is reported and the page gets the document's text back. */
+function createItemApplier(
+  document: vscode.TextDocument, logger: NotesEditorProviderDeps["logger"], autosave: ReturnType<typeof createAutosave>, post: Post,
+): (message: Extract<NotesEditorOutbound, { type: "save" | "create" }>) => void {
+  let edits: Promise<unknown> = Promise.resolve();
+  return (message) => {
+    edits = edits.then(async () => {
+      try {
+        const edit = itemMessageEdit(document, message);
+        if (edit && !(await vscode.workspace.applyEdit(edit))) { throw new Error("VS Code did not apply the edit."); }
+        if (edit) { autosave.schedule(document); }
+      } catch (error) {
+        void logger.error(MODULE, error, { action: message.type, itemId: message.itemId });
+        void vscode.window.showErrorMessage(`LabShelf: could not save the note — ${formatError(error)}`);
+        post({ type: "update", text: document.getText() });
+      }
+    });
+  };
+}
+
 export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode.CustomTextEditorProvider {
   return {
     async resolveCustomTextEditor(document, panel) {
@@ -136,20 +159,9 @@ export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode
       // The cells of one notes file share a process per language; the file is the note.
       const noteKey = `file:${document.uri.toString()}`;
       const cells = createCellBridge(deps.cells, noteKey, post);
-      // Item edits land one after another, each computed on the text the previous one left.
-      let edits: Promise<unknown> = Promise.resolve();
-      const applyItem = (message: Extract<NotesEditorOutbound, { type: "save" | "create" }>): void => {
-        edits = edits.then(async () => {
-          try {
-            const edit = itemMessageEdit(document, message);
-            if (edit && !(await vscode.workspace.applyEdit(edit))) { throw new Error("VS Code did not apply the edit."); }
-          } catch (error) {
-            void logger.error(MODULE, error, { action: message.type, itemId: message.itemId });
-            void vscode.window.showErrorMessage(`LabShelf: could not save the note — ${formatError(error)}`);
-            post({ type: "update", text: document.getText() });
-          }
-        });
-      };
+      // A page edit is saved 300 ms after the last one, only while the document is still dirty.
+      const autosave = createAutosave();
+      const applyItem = createItemApplier(document, logger, autosave, post);
       const subscriptions: vscode.Disposable[] = [
         vscode.workspace.onDidChangeTextDocument((event) => {
           if (event.document.uri.toString() === document.uri.toString() && event.contentChanges.length > 0) { post({ type: "update", text: document.getText() }); }
@@ -174,7 +186,9 @@ export function createNotesEditorProvider(deps: NotesEditorProviderDeps): vscode
       ];
       const unsubscribePopup = deps.editorPrefs?.onNotePopupChange((notePopup) => post({ type: "notePopup", notePopup }));
       if (unsubscribePopup) { subscriptions.push({ dispose: unsubscribePopup }); }
-      panel.onDidDispose(() => { cells.dispose(); while (subscriptions.length) { subscriptions.pop()?.dispose(); } });
+      const tracked = deps.diskMerge?.track(document);
+      if (tracked) { subscriptions.push(tracked); }
+      panel.onDidDispose(() => { autosave.dispose(); cells.dispose(); while (subscriptions.length) { subscriptions.pop()?.dispose(); } });
       panel.webview.html = await notesEditorHtml(panel.webview, extensionUri);
     },
   };

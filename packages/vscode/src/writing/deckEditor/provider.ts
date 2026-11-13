@@ -7,6 +7,7 @@ import { findOwningProject, type WritingProjects } from "../projects/index.js";
 import type { DeckKitsHandler } from "../sourceEditor/index.js";
 import { parseDeckPageMessage, type DeckHostMessage, type DeckKitsMessage, type DeckPageMessage } from "./deckMessages.js";
 import { createDeckSync, readThemeText, type DeckSync } from "./deckSync.js";
+import { openDocumentOf, type DiskMerge } from "../../localSync/index.js";
 
 const MODULE = "writing/deckEditor";
 
@@ -18,6 +19,24 @@ export interface DeckEditorProviderDeps {
   closePreview?: (projectFolder: string) => void;
   /** The library's deck Kits, the one handler the LabShelf editor's decks share; absent, kits requests fail. */
   kits?: DeckKitsHandler;
+  /** Takes a disk change of deck.html or theme.css into its dirty document by a merge. */
+  diskMerge?: DiskMerge;
+}
+
+/** Tracks theme.css with the disk merge while its document is open, from now until disposed. */
+function trackTheme(diskMerge: DiskMerge, themeUri: vscode.Uri): vscode.Disposable {
+  const key = themeUri.toString();
+  let handle: vscode.Disposable | undefined;
+  const take = (document: vscode.TextDocument): void => {
+    if (!handle && document.uri.toString() === key) handle = diskMerge.track(document);
+  };
+  const open = openDocumentOf(themeUri);
+  if (open) take(open);
+  const opened = vscode.workspace.onDidOpenTextDocument(take);
+  const closed = vscode.workspace.onDidCloseTextDocument((document) => {
+    if (document.uri.toString() === key) { handle?.dispose(); handle = undefined; }
+  });
+  return { dispose: () => { opened.dispose(); closed.dispose(); handle?.dispose(); handle = undefined; } };
 }
 
 /** <extension>/dist/deckEditor, the bundle every deck webview runs. */
@@ -158,6 +177,7 @@ export function createDeckEditorProvider(deps: DeckEditorProviderDeps): vscode.C
           });
         }),
       ];
+      if (deps.diskMerge) subscriptions.push(deps.diskMerge.track(document), trackTheme(deps.diskMerge, themeUri));
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) subscriptions.pop()?.dispose();

@@ -24,6 +24,7 @@ import * as path from "node:path";
 import { spawn } from "node:child_process";
 import { FileProjectVersionStore, Logger, createAiVisionTableReader, createProjectContent, formatError, type AiCredentialStore, type AiProvider, type EquationPort, type ICellRunner, type ILogger, type ReaderHostPorts, type RunCellPort } from "@labshelf/core";
 import {
+  mergeText,
   NodeLibraryFileSystem,
   nodePathOps,
   NodePdfOpener,
@@ -114,6 +115,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     createReaderThemesPort: createNodeReaderThemesPort,
     createEditorPrefsPort: createNodeEditorPrefsPort,
     openAiStorage,
+    textMerge: mergeText,
     deviceLayout: createDeviceLocalLayout,
     createProjectWriteTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),
     createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path: nodePathOps, logger, deviceDirs }),

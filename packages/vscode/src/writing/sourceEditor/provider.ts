@@ -19,6 +19,7 @@ import { openProjectOutputs, type OutputSourceHost } from "../outputs/index.js";
 import { createDeckWorkspaceBridge, currentPdfjs, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { describePdfjsAssets, pdfjsResourceRoots } from "./pdfjsAssets.js";
 import { createDocumentSync } from "./documentSync.js";
+import type { DiskMerge } from "../../localSync/index.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
 
 export const SOURCE_EDITOR_VIEW_TYPE = "labshelf.sourceEditor";
@@ -54,6 +55,8 @@ export interface SourceEditorProviderDeps {
   state?: Pick<vscode.Memento, "get" | "update">;
   /** This machine's source folders of linked outputs; absent on the web, where the page links no outputs. */
   outputSources?: OutputSourceHost;
+  /** Takes a disk change of the open file into its dirty document by a merge; without it VS Code's own reload rules apply. */
+  diskMerge?: DiskMerge;
 }
 
 /** A project's review mode is kept under this key; Editing until the user picks Reviewing. */
@@ -376,6 +379,8 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         subscriptions.push(outputs.watch(() => page.post({ type: "outputsChanged" })));
       }
       subscriptions.push({ dispose: () => session.bridges.dispose() });
+      const tracked = deps.diskMerge?.track(document);
+      if (tracked) { subscriptions.push(tracked); }
       panel.onDidDispose(() => {
         session.sync.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }

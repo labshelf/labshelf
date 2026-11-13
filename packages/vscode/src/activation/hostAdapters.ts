@@ -2,6 +2,7 @@
 import type {
   ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfOpener, PdfjsLoader,
   PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort, PaperNotesPort, ReaderThemesPort, EditorPrefsPort,
+  TextMerge,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../reader/index.js";
 import type { SharedLibraryConfig, UriOfPath } from "../library/index.js";
@@ -39,6 +40,8 @@ export interface HostAdapters {
   /** The port of the library's editor-prefs.json, shared with the browser. */
   createEditorPrefsPort(layout: Pick<LibraryLayout<string>, "editorPrefsPath" | "tmpDir">): EditorPrefsPort;
   openAiStorage: OpenAiStorage;
+  /** The line merge of a dirty document with its file's disk change (node-diff3). */
+  textMerge: TextMerge;
   deviceLayout(root: string): HostDeviceLayout;
   /** Project data over the library's writing projects; logger and dirs are the open library's, which change with it. */
   createProjectWriteTracking(root: () => string | undefined, logger: ILogger): ProjectWriteTracking;
