@@ -1,5 +1,5 @@
 // Mounts a whole notes file: the note bar, then one rich editor per item in file order, each in its own card with the item's author and date; the host saves, creates items and runs cells through ports.
-// In live mode the items come from a qmd doc and each editor edits its item's fragment (noteFileLive.ts follows the doc).
+// In live mode the items come from a qmd doc and each editor edits its item's fragment (followLiveItems follows the doc).
 import type * as Y from "yjs";
 import { formatError } from "../../errors/index.js";
 import { createCellRuns, type CellLanguage, type MathRequest, type MathResult, type RunCellPort } from "../compute/index.js";
@@ -14,8 +14,8 @@ import { createLineNumbering, type LineNumbering } from "./lineGutter.js";
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle, type QmdEditorOptions } from "./qmdEditor.js";
 import type { QmdPopupOptions } from "./qmdBubble.js";
 import type { NotePaperObjects } from "./paperObjectPicker.js";
-import { followLiveItems, placeLiveCards, toLiveItem, type LiveItems } from "./noteFileLive.js";
-import type { QmdDocItem } from "../qmdDocItems.js";
+import { listQmdItems, observeQmdItems, parseQmdFence, type QmdDocItem } from "../qmdDocItems.js";
+import { readQmdItemBody } from "../sharedQmdDoc.js";
 
 /** How the host runs the cells of the note; without `runCell` the cells show their stored outputs and Run reports that the host has no runner. */
 export interface NoteFileCells {
@@ -286,5 +286,77 @@ export function mountNoteFile(host: HTMLElement, options: NoteFileOptions): Note
     get editors() { return s.mounted; },
     update: (text) => updateFile(s, text),
     destroy() { unmountAll(s); showBar(s, false); root.remove(); },
+  };
+}
+
+// ---------- following a live qmd doc ----------
+// Follows the items of a live qmd doc: mounts the editor of a new key, destroys the editor of a removed key, remounts a key whose fragment changed and keeps the rest.
+/** A doc item as the notes file mount shows it: id, author and created from the fence, and the body read from the fragment whenever asked. */
+function toLiveItem(doc: Y.Doc, item: QmdDocItem): Pick<ItemSegment, "id" | "body" | "author" | "created"> {
+  const segment = parseQmdFence(item.fence);
+  return {
+    id: item.id,
+    ...(segment?.author === undefined ? {} : { author: segment.author }),
+    ...(segment?.created === undefined ? {} : { created: segment.created }),
+    get body() { return readQmdItemBody(doc, item.key) ?? ""; },
+  };
+}
+
+/** Makes `list` hold exactly `cards`, in that order, moving a card only when the order differs. */
+function placeLiveCards(list: HTMLElement, cards: readonly HTMLElement[]): void {
+  const wanted = new Set<Element>(cards);
+  for (const child of [...list.children]) { if (!wanted.has(child)) child.remove(); }
+  if (cards.some((card, index) => list.children[index] !== card)) list.append(...cards);
+}
+
+/** What the follower asks of the mount: build one item's view, tear one down, and show the views in doc order. */
+interface LiveItemsHost<M> {
+  mount(item: QmdDocItem): M;
+  destroy(mounted: M): void;
+  /** Called after every sync with the mounted views in doc order (empty when the doc has no item). */
+  show(mounted: readonly M[], items: readonly QmdDocItem[]): void;
+}
+
+interface LiveItems<M> {
+  /** The mounted views in doc order. */
+  readonly mounted: readonly M[];
+  /** Destroys every mounted view and stops following the doc. */
+  destroy(): void;
+}
+
+interface Entry<M> { fragment: Y.XmlFragment; mounted: M }
+
+/** Mounts the doc's items now and follows their changes until destroyed. */
+function followLiveItems<M>(doc: Y.Doc, host: LiveItemsHost<M>): LiveItems<M> {
+  const entries = new Map<string, Entry<M>>();
+  let mounted: M[] = [];
+  const sync = (): void => {
+    const items = listQmdItems(doc);
+    const wanted = new Map(items.map((item) => [item.key, item]));
+    for (const [key, entry] of [...entries]) {
+      if (wanted.get(key)?.fragment === entry.fragment) { continue; }
+      entries.delete(key);
+      host.destroy(entry.mounted);
+    }
+    mounted = items.map((item) => {
+      let entry = entries.get(item.key);
+      if (!entry) {
+        entry = { fragment: item.fragment, mounted: host.mount(item) };
+        entries.set(item.key, entry);
+      }
+      return entry.mounted;
+    });
+    host.show(mounted, items);
+  };
+  sync();
+  const stop = observeQmdItems(doc, sync);
+  return {
+    get mounted() { return mounted; },
+    destroy() {
+      stop();
+      for (const entry of entries.values()) { host.destroy(entry.mounted); }
+      entries.clear();
+      mounted = [];
+    },
   };
 }

@@ -6,13 +6,14 @@ import { createShortcuts, openShortcutsDialog } from "./shortcuts.js";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type * as Y from "yjs";
-import { type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type SelectionPopupPrefs, type TypingHelpers } from "../../../index.js";
+import { TYPING_HELPER_INFO, listTypingHelpers, type Annotation, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels, type SelectionPopupPrefs, type TypingHelpers } from "../../../index.js";
 import { createCommentSupport, redoSharedEdit, undoSharedEdit, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import type { PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
 import type { CitationScopeRecord } from "../../citations/citationScopes.js";
 import type { MathPreviewSetting } from "./mathPreview.js";
 import { type ProofingSetting } from "./proofing.js";
 import { type DefinitionDeps } from "./typst.js";
+import { mountOverlay, renderElement } from "../../../ui/dom/index.js";
 import { createSourceUpdates, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "./formatting.js";
 import { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
 import { type SelectionPopup, type SourceInserts } from "./selectionPopup.js";
@@ -25,7 +26,6 @@ import { createEditorLibraryCitation, type LibraryCitationDeps } from "./library
 import { documentSync, type SourceDocument } from "./documentMode.js";
 import { createFolding } from "./folding.js";
 import { createReviewSupport, type EditorReview, type ReviewMode } from "./review.js";
-import { openTypingHelpersDialog } from "./typingHelpersDialog.js";
 import type { SourceToolbarDropdown } from "./toolbar.js";
 import { deckFocus } from "./deckFocus.js";
 import { createDeckEditing, type SourceDeckEditing } from "./deckTools.js";
@@ -241,4 +241,52 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const unregister = registerEditor(view, deps, save.flush, saved, refreshAll);
   const stops = [stopProblems, stopComments, stopReview];
   return createEditorHandle({ deps, view, kind, labels, save, noteRefresh, noteLinks, codeLinks, outputLinks, citeFromLibrary, review, spelling, typing, popup, showPopupSettings, unregister, stops });
+}
+
+// ---------- the Customize Shortcuts dialog ----------
+// One switch per typing helper of the file's language, each applied as it is flipped.
+export interface TypingHelpersDialogOptions {
+  language: SourceLanguage;
+  helpers: TypingHelpers;
+  /** Runs on each flip with every helper's new state. */
+  onChange(next: TypingHelpers): void;
+  /** Opens the Keyboard Shortcuts dialog; without it the dialog offers no link to it. */
+  showShortcuts?(): void;
+  /** Gets the focus back when the dialog closes. */
+  view?: EditorView;
+}
+
+let dialogOpen = false;
+
+/** Opens the dialog; Close or Escape gives the focus back to the editor. */
+export function openTypingHelpersDialog(options: TypingHelpersDialogOptions): void {
+  if (dialogOpen) return;
+  dialogOpen = true;
+  let current: TypingHelpers = { ...options.helpers };
+  const heading = renderElement("div", { class: "ls-dialog-title", id: "ls-typing-title", text: "Customize Shortcuts" });
+  const rows = listTypingHelpers(options.language).map((id) => {
+    const info = TYPING_HELPER_INFO[id];
+    const control = renderElement("input", { type: "checkbox", role: "switch", "aria-label": info.label });
+    control.checked = current[id];
+    control.addEventListener("change", () => {
+      current = { ...current, [id]: control.checked };
+      options.onChange(current);
+    });
+    return renderElement("label", { class: "ls-typing-row" },
+      renderElement("span", { class: "ls-typing-text" },
+        renderElement("span", { text: info.label }),
+        renderElement("code", { class: "ls-typing-example", text: info.examples[options.language] ?? "" })),
+      control);
+  });
+  const close = renderElement("button", { type: "button", class: "ls-btn", text: "Close" });
+  const shortcuts = options.showShortcuts ? renderElement("button", { type: "button", class: "ls-btn", text: "Keyboard Shortcuts" }) : null;
+  const dialog = renderElement("div", { class: "ls-dialog ls-typing-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": heading.id },
+    renderElement("div", { class: "ls-dialog-head" }, heading),
+    renderElement("div", { class: "ls-typing-rows" }, ...rows),
+    renderElement("div", { class: "ls-dialog-actions" }, shortcuts, close));
+  const dismiss = (): void => { dialogOpen = false; overlay.close(); options.view?.focus(); };
+  const overlay = mountOverlay(dialog, dismiss);
+  close.addEventListener("click", dismiss);
+  shortcuts?.addEventListener("click", () => { dismiss(); options.showShortcuts?.(); });
+  close.focus();
 }

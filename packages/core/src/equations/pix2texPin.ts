@@ -30,7 +30,7 @@ export const PIX2TEX_PIN: Pix2texPin = {
 
 const PLATFORMS: readonly Pix2texPlatform[] = ["darwin-arm64", "darwin-x64", "win32-x64", "linux-x64", "linux-arm64"];
 
-export function pix2texPlatform(platform: NodeJS.Platform, arch: string): Pix2texPlatform | undefined {
+export function pix2texPlatform(platform: string, arch: string): Pix2texPlatform | undefined {
   const key = `${platform}-${arch}`;
   return PLATFORMS.find((candidate) => candidate === key);
 }

@@ -9,9 +9,8 @@ import {
   type HostToWebview, type ReaderNote, type WebviewToHost,
 } from "./protocol/index.js";
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
-import { loadReaderNotes, noteHandlers } from "./noteMessages.js";
+import { loadReaderNotes, noteHandlers, paperObjectHandlers } from "./noteMessages.js";
 import { equationHandlers } from "./equationMessages.js";
-import { paperObjectHandlers } from "./paperObjectMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts, type ResolvedTheme } from "./hostPorts.js";
 
 const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...paperObjectHandlers, ...equationHandlers, ...shareHandlers, ...previewHandlers };

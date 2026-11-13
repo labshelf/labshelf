@@ -14,7 +14,7 @@ export { applyProblems, createEditorExtensions, createHelperUpdates, createWrite
 export { codeHighlight, editorTheme } from "./editorTheme.js";
 export { createSelectionListener } from "./selectionListener.js";
 export { createTypingSwitch, type TypingSwitch } from "./typingHelpers.js";
-export { openTypingHelpersDialog, type TypingHelpersDialogOptions } from "./typingHelpersDialog.js";
+export { openTypingHelpersDialog, type TypingHelpersDialogOptions } from "./editor.js";
 export { createSelectionPopup, type SelectionPopup, type SelectionPopupDeps, type SourceInserts } from "./selectionPopup.js";
 export { openSelectionPopupDialog, type PopupButtonGroup, type SelectionPopupDialogOptions } from "./selectionPopupDialog.js";
 export { renderSourceMoreEntries, renderSourceToolbar, type SourceToolbarButton, type SourceToolbarDropdown, type SourceToolbarEnd, type SourceToolbarItem, type SourceToolbarMenu } from "./toolbar.js";

@@ -1,12 +1,10 @@
 // Shows the result of an equation box beside it: progress, then the rendered equation with an editable LaTeX field
-// (`equationResult.ts`); the card that offers pix2tex or an API key when nothing could read it (`equationCard.ts`, with the
-// inline key form of `equationKeyForm.ts`); or the reason it failed. One popover at a time, answering only the request of
+// (the result view below); the card that offers pix2tex or an API key when nothing could read it (the card below, with its
+// inline key form); or the reason it failed. One popover at a time, answering only the request of
 // the box it was opened for.
 import type { AiProvider } from "../../ai/credentials.js";
 import type { EquationOutcome } from "../hostPorts.js";
 import { renderElement } from "../../ui/dom/index.js";
-import { renderEquationCard } from "./equationCard.js";
-import { renderEquationResult } from "./equationResult.js";
 import { deriveClampedNumber } from "./elements.js";
 
 /**
@@ -168,4 +166,149 @@ class ReaderEquationPopover implements EquationPopover {
       saveAiKey: this.options.saveAiKey,
     };
   }
+}
+
+// ---------- the card when nothing could read the equation ----------
+// The card offers pix2tex and an API key.
+type EquationOffers = Extract<EquationOutcome, { kind: "unavailable" }>["offers"];
+
+const INSTALL_LABELS: Readonly<Record<EquationOffers["pix2tex"], string | null>> = {
+  install: "Download pix2tex (local, free)",
+  installHelper: "Install LabShelf Helper",
+  none: null,
+};
+
+interface EquationCardHost {
+  /** Whether the request the card was shown for is still the open one. */
+  isCurrent: () => boolean;
+  /** Posts the action for the request the card was shown for. */
+  post: (type: "installPix2tex" | "addAiKey") => void;
+  /** Places the popover again after the card grew. */
+  place: () => void;
+  /** Given by a host that keeps the keys in the reader's page: the key button then opens a form in the card. */
+  saveAiKey?: ((provider: AiProvider, key: string) => Promise<void>) | undefined;
+}
+
+/** @returns the card for `offers`; its buttons act only while their request is the open one. */
+function renderEquationCard(host: EquationCardHost, offers: EquationOffers): HTMLElement {
+  const install = INSTALL_LABELS[offers.pix2tex];
+  const buttons: HTMLButtonElement[] = [];
+  const card = renderElement("div", { class: "equation-card" },
+    renderElement("p", { class: "equation-card-title", text: "Could not read this equation." }),
+    renderElement("p", { class: "equation-card-text", text: "This paper has no arXiv source and no reader for images is set up." }));
+  const action = (type: "installPix2tex" | "addAiKey", label: string, className: string): HTMLButtonElement => {
+    const button = renderElement("button", { class: `rd-btn-text ${className}`, type: "button", text: label });
+    button.addEventListener("click", () => {
+      if (!host.isCurrent()) { return; }
+      for (const b of buttons) { b.disabled = true; }
+      if (type === "addAiKey" && host.saveAiKey) { openKeyForm(host, card, host.saveAiKey); return; }
+      host.post(type);
+    });
+    buttons.push(button);
+    return button;
+  };
+  if (install || offers.aiKey) {
+    card.append(renderElement("div", { class: "equation-card-actions" },
+      install ? action("installPix2tex", install, "rd-btn-primary equation-install") : null,
+      offers.aiKey ? action("addAiKey", "Add an API key (Claude or OpenAI, paid per use)", "equation-add-key") : null));
+  }
+  return card;
+}
+
+/** Adds the key form to the card, and posts `addAiKey` once the key is stored so the host re-runs the request. */
+function openKeyForm(host: EquationCardHost, card: HTMLElement, save: NonNullable<EquationCardHost["saveAiKey"]>): void {
+  const form = renderEquationKeyForm({ save, isCurrent: host.isCurrent, onSaved: () => host.post("addAiKey"), onFailed: host.place });
+  card.append(form);
+  host.place();
+  form.querySelector<HTMLInputElement>("input.equation-key-input")?.focus({ preventScroll: true });
+}
+
+// ---------- the inline API key form ----------
+// Stores the key through the host's `save` and tells the popover when it is stored.
+const PROVIDER_NAMES: Readonly<Record<string, string>> = { anthropic: "Claude", openai: "OpenAI" };
+
+interface EquationKeyFormOptions {
+  /** Stores the key; the key never leaves it. */
+  save: (provider: AiProvider, key: string) => Promise<void>;
+  /** Whether the request the form was opened for is still the open one. */
+  isCurrent: () => boolean;
+  /** Called once the key is stored, while the request is still the open one. */
+  onSaved: () => void;
+  /** Called after a failed save showed its error, while the request is still the open one, so the popover can move. */
+  onFailed: () => void;
+}
+
+/** @returns the form that stores the key through `save`, then calls `onSaved` so the host re-runs the request. */
+function renderEquationKeyForm({ save, isCurrent, onSaved, onFailed }: EquationKeyFormOptions): HTMLFormElement {
+  const provider = renderElement("select", { class: "equation-key-provider", "aria-label": "Provider" },
+    ...(Object.keys(PROVIDER_NAMES) as AiProvider[]).map((value) => renderElement("option", { value, text: PROVIDER_NAMES[value] ?? value })));
+  const input = renderElement("input", { class: "equation-key-input", type: "password", "aria-label": "API key", placeholder: "API key", autocomplete: "off", spellcheck: "false" });
+  const error = renderElement("p", { class: "equation-key-error", role: "alert" });
+  const saveButton = renderElement("button", { class: "rd-btn-text rd-btn-primary equation-key-save", type: "submit", text: "Save key" });
+  const form = renderElement("form", { class: "equation-key-form" },
+    renderElement("div", { class: "equation-key-row" }, provider, input),
+    renderElement("p", { class: "equation-key-note", text: "The key stays in this browser's extension storage. The equation's image is sent to the provider." }),
+    error, saveButton);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const key = input.value.trim();
+    if (!isCurrent() || key === "" || saveButton.disabled) { return; }
+    saveButton.disabled = true;
+    error.textContent = "";
+    save(provider.value as AiProvider, key).then(
+      () => { if (isCurrent()) { onSaved(); } },
+      () => {
+        if (!isCurrent()) { return; }
+        saveButton.disabled = false;
+        error.textContent = "The key could not be saved.";
+        onFailed();
+      });
+  });
+  return form;
+}
+
+// ---------- the result view ----------
+// The editable LaTeX field with its live render, Copy LaTeX and where the LaTeX came from.
+type EquationLatexOutcome = Extract<EquationOutcome, { kind: "latex" }>;
+
+const COPY_LABEL = "Copy LaTeX";
+
+/** @returns the line that says where the LaTeX came from; a read from an image asks to be checked. */
+function formatEquationSource(outcome: EquationLatexOutcome): string {
+  if (outcome.source === "arxiv") {
+    return ["From the arXiv source", outcome.number ? `Eq. (${outcome.number})` : null, outcome.label || null].filter(Boolean).join(" · ");
+  }
+  if (outcome.source === "pix2tex") { return "Read by pix2tex — check it"; }
+  const provider = outcome.provider ? PROVIDER_NAMES[outcome.provider] ?? outcome.provider : "AI";
+  return `Read by ${provider} — check it`;
+}
+
+interface EquationResultHost {
+  /** Whether the request the view was made for is still the open one. */
+  isCurrent: () => boolean;
+  /** Renders `latex` into `slot`; the new render replaces the shown one only if no newer render or state came since. */
+  renderInto: (slot: HTMLElement, latex: string) => void;
+  copyText: (text: string) => Promise<void>;
+  /** Runs `reset` after the confirmation has been shown for a while, replacing any earlier one. */
+  confirmFor: (reset: () => void) => void;
+}
+
+/** @returns the latex view and the call that starts its first render, made after the view is shown. */
+function renderEquationResult(host: EquationResultHost, outcome: EquationLatexOutcome): { view: HTMLElement[]; start: () => void } {
+  const slot = renderElement("div", { class: "equation-render", "aria-live": "polite" });
+  const field = renderElement("textarea", { class: "equation-latex", "aria-label": "LaTeX", spellcheck: "false", rows: "3" });
+  field.value = outcome.latex;
+  field.addEventListener("input", () => { if (host.isCurrent()) { host.renderInto(slot, field.value); } });
+  const copy = renderElement("button", { class: "rd-btn-text rd-btn-primary equation-copy", type: "button", text: COPY_LABEL });
+  copy.addEventListener("click", () => {
+    const confirm = (label: string): void => {
+      if (!host.isCurrent()) { return; }
+      copy.textContent = label;
+      host.confirmFor(() => { copy.textContent = COPY_LABEL; });
+    };
+    host.copyText(field.value).then(() => confirm("Copied"), () => confirm("Could not copy"));
+  });
+  const source = renderElement("div", { class: "equation-source", text: formatEquationSource(outcome) });
+  const actions = renderElement("div", { class: "equation-actions" }, source, copy);
+  return { view: [slot, field, actions], start: () => host.renderInto(slot, field.value) };
 }
