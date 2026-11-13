@@ -218,7 +218,7 @@ export class AnnotationsTab implements SidebarPanel {
       openQuoteMenu(button, {
         label: "Copy with citation", icon: "copy",
         run: () => this.host.post({ command: "copyWithCitation", text: quote, pageNumber: page }),
-      }, () => cite(page, quote), "below");
+      }, () => cite(page, quote), "below", { page, quote });
     });
     return button;
   }

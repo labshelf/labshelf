@@ -57,7 +57,7 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, 
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, saveAiKey, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     const ui = wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
-    if (consult && !boot.preview) { attachConsult(ui, consult); }
+    if (consult && !boot.preview) { attachConsult(ctx, ui, consult); }
   }
 
   return start().catch((err: unknown) => {
@@ -69,10 +69,10 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, 
 }
 
 /** Asks the host for its consult once and shows it in the toolbar; leaving the page closes its windows, which flushes and releases their files. */
-function attachConsult(ui: ReaderUi, resolve: () => Promise<ConsultSetup | undefined>): void {
+function attachConsult(ctx: ReaderContext, ui: ReaderUi, resolve: () => Promise<ConsultSetup | undefined>): void {
   void resolve().then((setup) => {
     if (!setup) { return; }
-    const mounted = mountReaderConsult(ui.toolbar, setup);
+    const mounted = mountReaderConsult(ctx, ui, setup);
     window.addEventListener("pagehide", () => { void mounted.dispose(); }, { once: true });
   }, (error: unknown) => console.warn("LabShelf reader: the consult is not available", error));
 }

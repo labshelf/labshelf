@@ -7,7 +7,12 @@ import type { FloatingWindow, FloatingWindows } from "../../../ui/dom/widgets/fl
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { ConsultRef } from "../consultRequests.js";
 
-export interface ConsultFooterOptions { windows: FloatingWindows; onConsult(): void }
+export interface ConsultFooterOptions {
+  windows: FloatingWindows;
+  onConsult(): void;
+  /** False leaves out the Consult button, for a surface that has one in its toolbar; the chips stay. */
+  button?: boolean;
+}
 
 const KIND_ICONS: Record<ConsultRef["kind"], IconName> = {
   paper: "file-text",
@@ -44,7 +49,15 @@ function createPanel(options: ConsultFooterOptions): Panel {
     renderElement("span", { text: "Consult" }));
   consult.addEventListener("click", () => options.onConsult());
   const chips = renderConsultChips(options.windows);
-  return { dom: renderElement("div", { class: "ls-consult-footer" }, consult, chips.el), destroy: chips.destroy };
+  const dom = renderElement("div", { class: "ls-consult-footer" }, ...(options.button === false ? [] : [consult]), chips.el);
+  if (options.button === false) {
+    // Without its button the footer only lists windows: hidden while none is open.
+    const syncShown = (): void => { dom.hidden = options.windows.list().length === 0; };
+    syncShown();
+    const stop = options.windows.onChange(syncShown);
+    return { dom, destroy: () => { stop(); chips.destroy(); } };
+  }
+  return { dom, destroy: chips.destroy };
 }
 
 /** The strip of chips, one per open window, that follows the windows until `destroy`; shared by the footer and the reader toolbar. */

@@ -12,8 +12,17 @@ export interface VscodeConsultDeps {
   highlightsOf?: ((paperId: string) => Promise<Annotation[]>) | undefined;
   /** The papers' notes: the store answers the parsed file, a plain reader its text. */
   paperNotes: { read(paperId: string): Promise<ItemFile | string> };
-  /** The asking panel's project folder; absent for a file in no project, which then lists no code and offers no Browse…. */
+  /** The asking panel's project folder; absent for a reader or a file in no project, whose code then lists from the first workspace folder. */
   projectFolder?: string | undefined;
+}
+
+/**
+ * The folder a consult's code paths are relative to: the panel's project, else the first workspace folder (a reader has no project), else none,
+ * which lists no code and offers no Browse….
+ */
+export function deriveConsultCodeRoot(projectFolder: string | undefined): vscode.Uri | undefined {
+  if (projectFolder !== undefined) return vscode.Uri.file(projectFolder);
+  return vscode.workspace.workspaceFolders?.[0]?.uri;
 }
 
 async function exists(file: string): Promise<boolean> {
@@ -27,7 +36,7 @@ async function exists(file: string): Promise<boolean> {
 
 export function createVscodeConsultIo(deps: VscodeConsultDeps): ConsultIo {
   const { library, projects, paperNotes, projectFolder } = deps;
-  const projectRoot = projectFolder === undefined ? undefined : vscode.Uri.file(projectFolder);
+  const projectRoot = deriveConsultCodeRoot(projectFolder);
   const listFiles = (project: ReadyProject): Promise<string[]> => projects.data.listProjectFiles(project.folder);
   const io: ConsultIo = {
     listPapers: () => library.listPapers(),

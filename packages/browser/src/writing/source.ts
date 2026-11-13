@@ -12,6 +12,7 @@ import type { TabContext } from "../libraryUi/editorArea";
 import type { SourceEditorDeps } from "./session";
 import type { NoteLinkActions } from "./noteLinks";
 import type { CodeLinkActions } from "@labshelf/core/sourceEditor";
+import type { ConsultKind } from "@labshelf/core";
 
 // The text updates and the source language live in core; these keep the browser's import path.
 export { deriveCodeMirrorTemplate, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "@labshelf/core/sourceEditor";
@@ -99,6 +100,8 @@ interface ActionTarget {
   outputLinks?: { insert(): Promise<void> } | undefined;
   /** Cite from Library, the popup of the editor; undefined when the editor has no library to cite from. */
   citeFromLibrary?: (() => Promise<void>) | undefined;
+  /** Opens the Consult chooser, on a kind when given; undefined without the page's live files, where the popups above stand in. */
+  consult?: ((kind?: ConsultKind) => void) | undefined;
 }
 
 export interface SourceActionDeps {
@@ -131,12 +134,23 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
       if (current?.entry.kind === "ready") void addImage({ edits: current.edits, language, entry: current.entry, path, fs, logger });
     } },
     { id: "searchInProject", icon: "search", label: "Search in Project", run: openSearch },
-    { id: "citeFromLibrary", icon: "quote", label: "Cite from Library", run: () => { void target()?.citeFromLibrary?.(); } },
+    // Consult is the one way in: its windows cite, list code and link outputs. Cite from Library and Insert code open it on their kind.
+    { id: "consult", icon: "book", label: "Consult", run: () => {
+      const current = target();
+      if (current?.consult) current.consult(); else void current?.citeFromLibrary?.();
+    } },
+    { id: "citeFromLibrary", icon: "quote", label: "Cite from Library", overflow: true, run: () => {
+      const current = target();
+      if (current?.consult) current.consult("paper"); else void current?.citeFromLibrary?.();
+    } },
     ...(language === "latex" ? [{ id: "indentDocument", icon: "indent", label: "Indent Document", run: withEdits((edits) => edits.indentDocument()) } satisfies EditorTabAction] : []),
     { id: "bold", icon: "bold", label: "Bold", overflow: true, run: withEdits((edits) => edits.wrap("bold")) },
     { id: "italic", icon: "italic", label: "Italic", overflow: true, run: withEdits((edits) => edits.wrap("italic")) },
     ...(language === "latex" ? [{ id: "insertFromNote", icon: "symbol-operator", label: "Insert from note", overflow: true, run: withNoteLinks((links) => links.insert()) } satisfies EditorTabAction] : []),
-    { id: "insertCode", icon: "code", label: "Insert code", overflow: true, run: () => { const links = target()?.codeLinks; if (links) void links.insert(); } },
+    { id: "insertCode", icon: "code", label: "Insert code", overflow: true, run: () => {
+      const current = target();
+      if (current?.consult) current.consult("code"); else if (current?.codeLinks) void current.codeLinks.insert();
+    } },
     { id: "linkOutput", icon: "chart", label: "Link output", overflow: true, run: () => { const links = target()?.outputLinks; if (links) void links.insert(); } },
     { id: "updateFromNote", icon: "refresh", label: "Update from note", overflow: true, run: withNoteLinks((links) => links.update()) },
     { id: "showNoteDifferences", icon: "replace", label: "Show differences", overflow: true, run: withNoteLinks((links) => links.showDifferences()) },
@@ -150,7 +164,7 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
 const TOOLBAR_GROUPS: readonly (readonly string[])[] = [
   ["bold", "italic"],
   ["insertSymbol", "insertTable", "insertImage"],
-  ["citeFromLibrary", "insertCode", "linkOutput"],
+  ["consult"],
   ["searchInProject", "indentDocument", "history"],
 ];
 

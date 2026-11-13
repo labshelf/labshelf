@@ -5,7 +5,7 @@ import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
   buildCodeInsert, buildCodeUpdate, deriveListingStyle, describeCodeLinkState, diffCodeLink, findCodeLinkLines, formatError, resolveCodeLinks, scanCodeLinks,
-  type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
+  type CodeExcerpt, type ILogger, type ManuscriptCodeLink, type ResolvedCodeLink,
 } from "../../../index.js";
 import { showToast } from "../../../ui/dom/index.js";
 import { pickCodeExcerpt, type CodePickMemory, type CodePickSource } from "./codePickDialog.js";
@@ -105,37 +105,56 @@ const atCursor = (rt: Runtime, view: EditorView, act: (line: number) => Promise<
 });
 
 /** The manuscript texts that decide the listing style: this one and the project's LaTeX files with a preamble. */
-async function preambleTexts({ deps }: Runtime, current: string): Promise<string[]> {
+async function preambleTexts(deps: CodeLinkDeps, current: string): Promise<string[]> {
   const paths = (await deps.files.list()).filter((path) => path.endsWith(".tex"));
   const texts = await Promise.all(paths.map((path) => deps.files.read(path).catch(() => "")));
   return [current, ...texts.filter((text) => text.includes("\\documentclass"))];
+}
+
+/** Writes the excerpt's listing at the cursor on lines of its own; resolves false when the code cannot be listed (said in a toast). */
+async function insertExcerptBlock(deps: CodeLinkDeps, view: EditorView, excerpt: CodeExcerpt): Promise<boolean> {
+  const { style, needsPackage } = deriveListingStyle(deps.language === "latex" ? await preambleTexts(deps, view.state.doc.toString()) : []);
+  let block: string;
+  try {
+    block = await buildCodeInsert(deps.language, style, excerpt);
+  } catch (error) {
+    showToast(formatError(error), "info");
+    return false;
+  }
+  insertBlock(view, block);
+  if (deps.language === "latex" && needsPackage) showToast(`Add \\usepackage{${style === "minted" ? "minted" : "listings"}} to the preamble.`, "info");
+  return true;
 }
 
 /** Insert code: the popup picks the file and the lines, and the listing goes at the cursor on lines of its own. */
 const insertCode = (rt: Runtime, view: EditorView, memory: CodePickMemory): Promise<void> => rt.guarded("insert the code", async () => {
   const excerpt = await pickCodeExcerpt(rt.deps.source, memory);
   if (!excerpt) return;
-  const { style, needsPackage } = deriveListingStyle(rt.deps.language === "latex" ? await preambleTexts(rt, view.state.doc.toString()) : []);
-  let block: string;
-  try {
-    block = await buildCodeInsert(rt.deps.language, style, excerpt);
-  } catch (error) {
-    showToast(formatError(error), "info");
-    return;
-  }
-  insertBlock(view, block);
-  if (rt.deps.language === "latex" && needsPackage) showToast(`Add \\usepackage{${style === "minted" ? "minted" : "listings"}} to the preamble.`, "info");
-  await rt.refresh(view);
+  if (await insertExcerptBlock(rt.deps, view, excerpt)) await rt.refresh(view);
 });
 
-export function createCodeLinks(deps: CodeLinkDeps): CodeLinks {
+/** The code links of an editor, plus writing an excerpt picked elsewhere (a consult window) as Insert code writes it. */
+export type CodeLinksWithExcerpts = CodeLinks & { insertExcerpt(view: EditorView, excerpt: CodeExcerpt): Promise<void> };
+
+export function createCodeLinks(deps: CodeLinkDeps): CodeLinksWithExcerpts {
   // The file last picked opens first the next time, for this editor's life.
   const memory: CodePickMemory = {};
-  return createLinkController(deps, {
+  const controller = createLinkController(deps, {
     module: MODULE, subject: "read the listing", refreshAction: "refreshCodeLinks",
     compute: async (_rt, text, doc) => toMarks(doc, await resolveCodeLinks(deps.language, text, deps.source)),
     buttonsFor, insert: (rt, view) => insertCode(rt, view, memory), atCursor, update: applyUpdate, showDiff,
   });
+  return {
+    ...controller,
+    async insertExcerpt(view, excerpt) {
+      try {
+        if (await insertExcerptBlock(deps, view, excerpt)) await controller.refresh(view);
+      } catch (error) {
+        void deps.logger.error(MODULE, error, { action: "insertExcerpt", path: excerpt.path });
+        showToast(`Could not insert the code: ${formatError(error)}`, "error");
+      }
+    },
+  };
 }
 
 /** A listing's block, from its opening comment's line start to its closing comment's line end. */

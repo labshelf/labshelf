@@ -49,6 +49,7 @@ const DESCRIPTIONS: Readonly<Record<string, string>> = {
   "insert table": "Build a table from its size, its cells or a CSV file and insert it at the cursor.",
   "insert image": "Choose an image file and insert it as a figure.",
   "insert figure": "Draw a diagram, written as TikZ, or edit the one at the cursor.",
+  consult: "Open a paper, notes, a manuscript or a code file in a floating window; select in it to cite, list code or link outputs at the cursor.",
   "cite from library": "Cite a paper from your LabShelf library at the cursor.",
   "insert code": "Insert a code file, or one definition from it, as a listing that stays linked to the file.",
   "search in project": "Find, and replace, text across every file of the project.",

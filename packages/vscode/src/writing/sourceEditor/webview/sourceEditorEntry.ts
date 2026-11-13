@@ -21,7 +21,7 @@ import "@labshelf/core/styles/deck-shell-style.css";
 import "@labshelf/core/styles/deck-shell-grid.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type MenuEntry, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createConsult, type Consult } from "@labshelf/core/consult";
+import { createConsult, createEditorConsultActions, type Consult } from "@labshelf/core/consult";
 import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import { createFilledTableSnippet, isConsultInbound, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
@@ -114,6 +114,8 @@ function createPageConsult(): { consult: Consult; receive: ReturnType<typeof cre
         return { assets, readBytes: async () => bytes.slice(0) };
       },
       onError: (error) => { console.error("[sourceEditor.webview]", error); },
+      // INVARIANT: the host lists and browses code files relative to the project folder, as a listing records them.
+      actions: () => mountedEditor && createEditorConsultActions(mountedEditor, (ref) => (ref.kind === "code" ? ref.path : undefined)),
     }),
   };
 }
@@ -142,6 +144,11 @@ function parseCommand(raw: unknown): EditorCommand | undefined {
   return undefined;
 }
 
+/** Cite from Library opens Consult on its papers, whose windows cite; the popup stands in only when there is no consult. */
+function citeFromLibrary(target: MountedEditor): void {
+  if (consult) { consult.choose("paper"); } else { void target.citeFromLibrary?.(); }
+}
+
 /** The mounted editor, once it is; commands that arrive while it mounts wait for it. */
 function createCommandRunner(): { attach(editor: MountedEditor): void; run(command: EditorCommand): void } {
   let editor: MountedEditor | undefined;
@@ -149,7 +156,7 @@ function createCommandRunner(): { attach(editor: MountedEditor): void; run(comma
   const apply = (target: MountedEditor, command: EditorCommand): void => {
     if (command.kind === "insertText") { target.insertText(command.text); }
     else if (command.kind === "insertSnippet") { target.insertSnippet(command.snippet); }
-    else if (command.kind === "citeFromLibrary") { void target.citeFromLibrary?.(); }
+    else if (command.kind === "citeFromLibrary") { citeFromLibrary(target); }
     else if (command.kind === "linkOutput") { void target.outputLinks?.insert(); }
     else { target.wrap(command.style); }
   };
@@ -197,12 +204,8 @@ const TEXT_TOOLS: readonly (readonly SourceToolbarButton[])[] = [
     { label: "Insert Figure", glyph: "chart", run: () => { void mountedEditor?.editDrawing(); } },
   ],
   [
-    // The popup runs here, in the editor: the paper, its pages and the scope, then the citation at the cursor and its scope saved.
-    { label: "Cite from Library", glyph: "quote", run: () => commands.run({ kind: "citeFromLibrary" }) },
-    // A code file, whole or one definition, as a listing whose link comments let the editor compare it with the file later.
-    { label: "Insert Code", glyph: "code", run: () => { void mountedEditor?.codeLinks?.insert(); } },
-    // A figure, table or values a code repository writes, copied into outputs/ and kept in .labshelf/outputs.json.
-    { label: "Link Output…", glyph: "link", run: () => commands.run({ kind: "linkOutput" }) },
+    // The one way in: a paper, notes, a manuscript or a code file in a floating window that cites, lists code and links outputs into the editor.
+    { label: "Consult", glyph: "book", run: () => { if (consult) { consult.choose(); } else { commands.run({ kind: "citeFromLibrary" }); } } },
   ],
 ];
 
@@ -217,12 +220,19 @@ const projectTools = (path: string): readonly SourceToolbarButton[] => [
 const PREVIEW_TOGGLE: SourceToolbarButton = { get label() { return previewOpen ? "Hide PDF Preview" : "Show PDF Preview"; }, get glyph() { return previewOpen ? "eye" : "eye-off"; }, run: () => ports.runAction("togglePreview") };
 
 /** The ⋯ menu's own entries; the spell check switch is stored in the labshelf.writing.spelling setting and the typing helpers in the library's editor-prefs.json. */
-const moreEntries = (): MenuEntry[] => renderSourceMoreEntries(
-  mountedEditor,
-  (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); },
-  (typing) => { void ports.request("setTyping", { typing }).catch(() => undefined); },
-  (selectionPopup) => { void ports.request("setSelectionPopup", { selectionPopup }).catch(() => undefined); },
-);
+const moreEntries = (): MenuEntry[] => [
+  // Shortcuts into Consult on one kind, and Link output's own popup.
+  { label: "Cite from Library", icon: "quote", onSelect: () => commands.run({ kind: "citeFromLibrary" }) },
+  { label: "Insert Code", icon: "code", onSelect: () => { if (consult) { consult.choose("code"); } else { void mountedEditor?.codeLinks?.insert(); } } },
+  { label: "Link Output…", icon: "link", onSelect: () => commands.run({ kind: "linkOutput" }) },
+  "separator",
+  ...renderSourceMoreEntries(
+    mountedEditor,
+    (on) => { void ports.request("setSpelling", { on }).catch(() => undefined); },
+    (typing) => { void ports.request("setTyping", { typing }).catch(() => undefined); },
+    (selectionPopup) => { void ports.request("setSelectionPopup", { selectionPopup }).catch(() => undefined); },
+  ),
+];
 
 /** The Project chat toggle, an icon beside Share, for a shared project only. */
 const CHAT: SourceToolbarButton = action("Project chat", "message", "toggleProjectChat");
@@ -282,7 +292,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
       createPeerCursors(peerStore),
       createSelectionListener(({ anchor, head, line }) => post({ type: "selection", anchor, head, line })),
       ...(deckFeed ? [deckFeed.extension] : []),
-      ...(consult ? [consult.footer()] : []),
+      ...(consult ? [consult.footer({ button: false })] : []),
     ],
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.

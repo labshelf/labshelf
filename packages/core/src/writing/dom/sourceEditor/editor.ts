@@ -22,7 +22,9 @@ import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { codeSourceButton, createCodeLinks, type CodeFileSource, type CodeLinkActions } from "./codeLinks.js";
 import { createEditorOutputLinks, type OutputLinkActions, type OutputLinkSupport } from "./outputLinks.js";
-import { createEditorLibraryCitation, type LibraryCitationDeps } from "./libraryCitation.js";
+import { createEditorLibraryCitation, createEditorScopedCiting, type LibraryCitationDeps } from "./libraryCitation.js";
+import type { CitationScope } from "../../citations/citationScopes.js";
+import type { CodeExcerpt } from "../../codeLinks/index.js";
 import { documentSync, type SourceDocument } from "./documentMode.js";
 import { createFolding } from "./folding.js";
 import { createReviewSupport, type EditorReview, type ReviewMode } from "./review.js";
@@ -113,6 +115,10 @@ export interface SourceEditor extends SourceUpdates {
   outputLinks: OutputLinkActions | undefined;
   /** Cite from Library: the popup, then the citation at the cursor and its scope saved; undefined without deps.libraryCitation. */
   citeFromLibrary: (() => Promise<void>) | undefined;
+  /** Citing a scope picked in a consult window: its exact text, and the citation written at the cursor as Cite from Library writes it; undefined without deps.libraryCitation. */
+  scopedCiting: { text(paperId: string, scope: CitationScope, quoted: boolean): Promise<string>; cite(paperId: string, scope: CitationScope, quoted: boolean): Promise<void> } | undefined;
+  /** Writes the listing of a code excerpt at the cursor as Insert code does; undefined without deps.codeLinks. */
+  insertCodeExcerpt: ((excerpt: CodeExcerpt) => Promise<void>) | undefined;
   /** Reads the code files again and redraws the listings' marks, after the host saw a code file change. */
   refreshCodeLinks(): void;
   /** Reads the outputs file and the sources again and redraws the references' marks, after the host saw an output or the outputs file change. */
@@ -159,6 +165,7 @@ interface MountedEditor {
   codeLinks: ReturnType<typeof createCodeLinks> | undefined;
   outputLinks: ReturnType<typeof createEditorOutputLinks> | undefined;
   citeFromLibrary: ReturnType<typeof createEditorLibraryCitation>;
+  scopedCiting: ReturnType<typeof createEditorScopedCiting>;
   review: ReturnType<typeof createReviewSupport> | undefined;
   spelling: ReturnType<typeof createSpellingSwitch>;
   typing: ReturnType<typeof createTypingSwitch>;
@@ -169,7 +176,7 @@ interface MountedEditor {
 }
 
 function createEditorHandle(m: MountedEditor): SourceEditor {
-  const { view, kind, deps, save, noteLinks, codeLinks, outputLinks, citeFromLibrary, review } = m;
+  const { view, kind, deps, save, noteLinks, codeLinks, outputLinks, citeFromLibrary, scopedCiting, review } = m;
   const closers = [() => m.noteRefresh.close(), () => noteLinks?.close(), () => codeLinks?.close(), () => outputLinks?.close(), m.unregister, ...m.stops, () => m.labels.dispose()];
   return {
     ...createSourceUpdates(view, kind),
@@ -179,6 +186,8 @@ function createEditorHandle(m: MountedEditor): SourceEditor {
     outputLinks: outputLinks && outputLinks.actionsFor(view),
     refreshOutputLinks: () => { if (outputLinks) void outputLinks.refresh(view); },
     citeFromLibrary: citeFromLibrary && (() => citeFromLibrary(view)),
+    scopedCiting: scopedCiting && { text: scopedCiting.text, cite: (paperId, scope, quoted) => scopedCiting.cite(view, paperId, scope, quoted) },
+    insertCodeExcerpt: codeLinks && ((excerpt) => codeLinks.insertExcerpt(view, excerpt)),
     flush: save.flush,
     dispose: () => closeEditor(view, deps, save.flush, closers),
     setReviewMode: (mode) => review?.setMode(mode),
@@ -218,6 +227,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const save = createSaver(deps, currentText, saved, onWritten, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
   const citeFromLibrary = createEditorLibraryCitation(deps);
+  const scopedCiting = createEditorScopedCiting(deps);
   const codeLinks = deps.codeLinks ? createCodeLinks({ language: kind, source: deps.codeLinks, files: deps.files, logger }) : undefined;
   const outputLinks = deps.outputLinks ? createEditorOutputLinks(deps.outputLinks, { language: kind, path, logger }) : undefined;
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
@@ -240,7 +250,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const stopReview = review?.attach(view);
   const unregister = registerEditor(view, deps, save.flush, saved, refreshAll);
   const stops = [stopProblems, stopComments, stopReview];
-  return createEditorHandle({ deps, view, kind, labels, save, noteRefresh, noteLinks, codeLinks, outputLinks, citeFromLibrary, review, spelling, typing, popup, showPopupSettings, unregister, stops });
+  return createEditorHandle({ deps, view, kind, labels, save, noteRefresh, noteLinks, codeLinks, outputLinks, citeFromLibrary, scopedCiting, review, spelling, typing, popup, showPopupSettings, unregister, stops });
 }
 
 // ---------- the Customize Shortcuts dialog ----------

@@ -7,7 +7,8 @@ import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, t
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type SourceEditor, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
 import type { Consult } from "@labshelf/core/consult";
-import { createBrowserConsult } from "../../consult/consultHost";
+import { createEditorConsultActions } from "@labshelf/core/consult";
+import { createBrowserConsult, deriveConsultCodePath } from "../../consult/consultHost";
 import type { LiveFiles } from "../../localSync/liveFiles";
 import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import {
@@ -49,7 +50,7 @@ async function openLiveBinding({ logger }: TabContext, live: LiveFiles, entry: P
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean; inserts: SourceInserts }, review: ReviewModeState, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void; release: () => Promise<void> } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void; release: () => Promise<void>; consult: Consult | undefined } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
@@ -79,15 +80,16 @@ async function loadEditor(
     const selectionPopup = await prefs.selectionPopup();
     if (disposed()) { await release(); return undefined; }
     // Without the page's replica hub there is nothing for a consult window to share, so the editor shows no consult footer.
-    consult = pageLive ? createBrowserConsult({ fs, logger, live: pageLive, projectId }) : undefined;
-    // The bibliography update after a citation saves the file through the editor that is mounted by then.
+    // The bibliography update after a citation saves the file through the editor that is mounted by then; the consult windows write into it too.
     let mounted: SourceEditor | undefined;
+    const folder = entry.folder;
+    consult = pageLive ? createBrowserConsult({ fs, logger, live: pageLive, projectId, actions: () => mounted && createEditorConsultActions(mounted, (ref) => deriveConsultCodePath(folder, ref)) }) : undefined;
     const collab = mode.kind === "shared" ? mode.collab : live?.collab;
     const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false, collab, consult), typing, selectionPopup, inserts: file.inserts });
     mounted = editor;
     loading.remove();
     if (disposed()) { void editor.dispose().then(release); return undefined; }
-    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor), release };
+    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor), release, consult };
   } catch (error) {
     void release();
     loading.textContent = `Could not open ${path}.`;
@@ -130,6 +132,8 @@ interface SourceTabState {
   stopTyping?: (() => void) | undefined;
   /** Closes the tab's consult windows, then lets the file's live file go; runs after the editor that edits its replica is disposed. */
   release?: (() => Promise<void>) | undefined;
+  /** The tab's consult windows: the toolbar's Consult opens their chooser; undefined without the page's live files. */
+  consult?: Consult | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
   searchHost?: { dispose(): void };
@@ -190,7 +194,7 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => {
       const { editor, loaded } = state;
-      return editor && loaded ? { edits: editor, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks, outputLinks: editor.outputLinks, citeFromLibrary: editor.citeFromLibrary } : undefined;
+      return editor && loaded ? { edits: editor, entry: loaded, noteLinks: editor.noteLinks, codeLinks: editor.codeLinks, outputLinks: editor.outputLinks, citeFromLibrary: editor.citeFromLibrary, ...(state.consult ? { consult: state.consult.choose } : {}) } : undefined;
     },
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => { if (state.search) state.search.toggle(); else workspace.openTab("search", { projectId }, 1); },
   };
@@ -213,6 +217,7 @@ function adoptEditor(state: SourceTabState, opened: OpenedEditor): void {
   state.editor = opened.editor;
   state.stopTyping = opened.stopTyping;
   state.release = opened.release;
+  state.consult = opened.consult;
   state.mode = opened.mode;
   // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
   state.loaded = isReadOnly(opened.mode) ? undefined : opened.entry;
@@ -264,7 +269,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     state.stopTyping?.();
     state.stopTyping = undefined;
     const release = state.release;
-    state.editor = state.loaded = state.mode = state.release = undefined;
+    state.editor = state.loaded = state.mode = state.release = state.consult = undefined;
     await previous?.dispose();
     await release?.();
     if (state.disposed) return;

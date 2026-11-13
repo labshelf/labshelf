@@ -8,7 +8,7 @@ jest.mock("../../src/storage/records", () => ({
   listCachedPaperRecords: async () => papers,
 }));
 
-import { createBrowserConsultIo, createBrowserConsultSetup, createBrowserFileOpener } from "../../src/consult/consultHost";
+import { createBrowserConsultIo, createBrowserConsultSetup, createBrowserFileOpener, deriveConsultCodePath } from "../../src/consult/consultHost";
 import { createPickedFiles } from "../../src/consult/pickedFile";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
@@ -279,5 +279,13 @@ describe("9.3 The browser source tab shows the consult footer; manuscripts, proj
       const manuscripts = entriesOf(await setup.client({ kind: "list", what: "manuscript" }));
       expect(manuscripts[0]!.ref.projectId).toBe("thesis");
     });
+  });
+});
+
+describe("deriveConsultCodePath", () => {
+  it("records a library code file relative to the editor's project folder, and nothing for a file picked outside the library", () => {
+    expect(deriveConsultCodePath("Projects/thesis", { kind: "code", path: "Projects/thesis/analysis/fit.py" })).toBe("analysis/fit.py");
+    expect(deriveConsultCodePath("Projects/thesis", { kind: "code", path: "Projects/model/run.py" })).toBe("../model/run.py");
+    expect(deriveConsultCodePath("Projects/thesis", { kind: "pickedFile", id: "f1", name: "scratch.py" })).toBeUndefined();
   });
 });

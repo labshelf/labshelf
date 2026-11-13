@@ -10,6 +10,8 @@ export interface ConsultChooserOptions {
   memory?: { kind?: ConsultKind };
   onPick(entry: ConsultEntry): void;
   onError?(error: unknown): void;
+  /** Adds a Link output… button, for a surface that links outputs; it closes the chooser first. */
+  onLinkOutput?(): void;
 }
 
 const KINDS: ReadonlyArray<{ kind: ConsultKind; label: string }> = [
@@ -54,9 +56,10 @@ class ConsultChooser {
     this.dialog = renderPickerDialog({
       heading: "Consult",
       pickers: [{ label: "Show", control: this.renderKinds() }, { label: "Entry", control: this.picker.root }],
-      leading: [this.browseSlot], trailing: [this.cancel], onDismiss: () => { this.done = true; this.picker.dispose(); },
+      leading: [...this.renderLinkOutput(), this.browseSlot], trailing: [this.cancel], onDismiss: () => { this.done = true; this.picker.dispose(); },
     });
     this.cancel.addEventListener("click", () => this.close());
+
     this.syncKinds();
     void this.load();
   }
@@ -66,6 +69,16 @@ class ConsultChooser {
     this.done = true;
     this.picker.dispose();
     this.dialog.close();
+  }
+
+  /** Link output…, for a surface that links outputs: they are linked from their own popup, so the button closes the chooser first. */
+  private renderLinkOutput(): HTMLElement[] {
+    const { onLinkOutput } = this.options;
+    if (!onLinkOutput) return [];
+    const link = renderTextButton("Link output...", "ls-btn");
+    link.title = "Link a figure, table or value from a code repository";
+    link.addEventListener("click", () => { this.close(); onLinkOutput(); });
+    return [link];
   }
 
   private renderKinds(): HTMLElement {

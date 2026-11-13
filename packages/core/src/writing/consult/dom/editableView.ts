@@ -1,6 +1,6 @@
 // The body of a consult window over an EditableFile (plan local-sync D8): a CodeMirror view for a text file (bound by collab or by a host
 // SourceDocument) or the note editor for a qmd file, edited in place; destroy flushes, then releases the file exactly once.
-import { Prec } from "@codemirror/state";
+import { Prec, type Extension } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { createCollabExtensions } from "../../../collab/dom/editorCollab.js";
 import { mountNoteFile } from "../../../qmd/dom/mountNoteFile.js";
@@ -17,14 +17,14 @@ function newClientId(): string {
   return `consult-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
 
-function mountText(body: HTMLElement, file: Extract<EditableFile, { kind: "text" }>): Mounted {
+function mountText(body: HTMLElement, file: Extract<EditableFile, { kind: "text" }>, extra: readonly Extension[]): Mounted {
   const { binding, path } = file;
   if ("collab" in binding) {
     const view = createCodeView(body, {
       path, text: binding.collab.text.toString(), readOnly: false, label: path,
       // INVARIANT: undo is the collab Y.UndoManager's (own edits only); CodeMirror's history would also undo remote edits.
       history: false,
-      extensions: [createCollabExtensions({ text: binding.collab.text, file: path })],
+      extensions: [createCollabExtensions({ text: binding.collab.text, file: path }), ...extra],
     });
     return { flush: () => Promise.resolve(), teardown: () => view.destroy() };
   }
@@ -34,6 +34,7 @@ function mountText(body: HTMLElement, file: Extract<EditableFile, { kind: "text"
     extensions: [
       ...createDocumentExtensions(document, newClientId()),
       Prec.high(keymap.of([{ key: "Mod-s", preventDefault: true, run: (target) => { documentSync(target)?.save(); return true; } }])),
+      ...extra,
     ],
   });
   return {
@@ -59,10 +60,13 @@ function mountQmd(body: HTMLElement, file: Extract<EditableFile, { kind: "qmd" }
   };
 }
 
-/** Mounts the editable view of `file` in `body`; `noteKey` keys a qmd note's cells and view state (the path by default). */
-export function mountEditableView(body: HTMLElement, file: EditableFile, options: { noteKey?: string; onError?(error: unknown): void } = {}): EditableView {
+/**
+ * Mounts the editable view of `file` in `body`; `noteKey` keys a qmd note's cells and view state (the path by default), and `textExtensions`
+ * go last on a text file's CodeMirror view (a consult window's selection bubble).
+ */
+export function mountEditableView(body: HTMLElement, file: EditableFile, options: { noteKey?: string; onError?(error: unknown): void; textExtensions?: readonly Extension[] } = {}): EditableView {
   const mounted = file.kind === "text"
-    ? mountText(body, file)
+    ? mountText(body, file, options.textExtensions ?? [])
     : mountQmd(body, file, options.noteKey ?? file.path, options.onError ? (error) => options.onError?.(error) : undefined);
   let destroying: Promise<void> | undefined;
   const destroy = async (): Promise<void> => {

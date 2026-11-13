@@ -168,7 +168,7 @@ function reviewDeps({ workspace, project }: TabContext, { projectId, path }: Edi
 
 /**
  * What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share.
- * @param consult the tab's consult windows, whose footer the editor shows; none without the page's live files
+ * @param consult the tab's consult windows, whose chips the editor's footer shows (its Consult button is in the toolbar); none without the page's live files
  */
 export function editorDeps(context: TabContext, entry: ProjectEntry, file: EditorFile, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
   flush: () => Promise<boolean>, collab: SourceEditorDeps["collab"], consult: Consult | undefined,
@@ -177,7 +177,7 @@ export function editorDeps(context: TabContext, entry: ProjectEntry, file: Edito
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
   const citations = entry.kind === "ready" ? createLibraryCitationWiring({ fs, logger, entry, flush, papers: listCachedPaperRecords }) : undefined;
-  const extensions = [...(feed ? [feed.extension] : []), ...(consult ? [consult.footer()] : [])];
+  const extensions = [...(feed ? [feed.extension] : []), ...(consult ? [consult.footer({ button: false })] : [])];
   return {
     projectId, path, files: projectFiles(fs, logger, entry, readOnly ? undefined : citations?.reanchor),
     helper: project().helperProject.editorPort(projectId), problems: project().helperProject.problems.subscribe,

@@ -92,19 +92,19 @@ describe("9.1b the VS Code ConsultIo", () => {
     expect(await make().io.listCodeFiles()).toEqual(["a.py", "../analysis/fit.py"]);
   });
 
-  it("9.1b the list of code files is empty when the panel has no project", async () => {
-    expect(await make({ projectFolder: undefined }).io.listCodeFiles()).toEqual([]);
+  it("a panel without a project (the reader) lists code and browses from the first workspace folder", async () => {
+    const io = make({ projectFolder: undefined }).io;
+    expect(await io.listCodeFiles()).toContain("analysis/fit.py");
+    expect(io.browse).toBeDefined();
+    expect(await answerConsult(io, {}, { kind: "list", what: "code" })).toMatchObject({ ok: true, value: { kind: "entries", canBrowse: true } });
   });
 
-  it("9.1b the code list reply says canBrowse with a project and not without one", async () => {
-    const withProject = await answerConsult(make().io, {}, { kind: "list", what: "code" });
-    const without = await answerConsult(make({ projectFolder: undefined }).io, {}, { kind: "list", what: "code" });
-    expect(withProject).toMatchObject({ ok: true, value: { kind: "entries", canBrowse: true } });
-    expect(without).toEqual({ ok: true, value: { kind: "entries", entries: [], canBrowse: false } });
-  });
-
-  it("9.1b browse is omitted without a project", () => {
-    expect(make({ projectFolder: undefined }).io.browse).toBeUndefined();
+  it("without a project or a workspace folder there is no code and no Browse", async () => {
+    workspace.workspaceFolders = undefined;
+    const io = make({ projectFolder: undefined }).io;
+    expect(await io.listCodeFiles()).toEqual([]);
+    expect(io.browse).toBeUndefined();
+    expect(await answerConsult(io, {}, { kind: "list", what: "code" })).toEqual({ ok: true, value: { kind: "entries", entries: [], canBrowse: false } });
   });
 
   it("9.1b browse answers the picked code file's project-relative path and its name", async () => {

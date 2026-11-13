@@ -13,3 +13,7 @@ export { editableFromReplica } from "./editableFile.js";
 export type { EditableFile, EditableFileOpener } from "./editableFile.js";
 export { mountPaperView } from "./paperView.js";
 export type { PaperView } from "./paperView.js";
+export { createActionBubble, isQuotable } from "./consultActions.js";
+export type { ActionBubble, ConsultActions } from "./consultActions.js";
+export type { ManuscriptWindow } from "./createConsult.js";
+export { createEditorConsultActions } from "./editorActions.js";

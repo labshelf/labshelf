@@ -17,13 +17,23 @@ const HIDE_GRACE_MS = 150;
 /** One item of the quote menu. */
 export interface QuoteMenuChoice { label: string; icon: IconName; run(): void }
 
+/** What a quote menu cites: the page and passage, both absent for the whole paper. */
+export interface QuoteMenuCitation { page?: number | undefined; quote?: string | undefined }
+
+let quoteMenuExtras: ((citation: QuoteMenuCitation) => QuoteMenuChoice[]) | undefined;
+
+/** Adds choices after Cite in a project… in every quote menu of this page (Cite in an open manuscript window); undefined removes them. */
+export function setQuoteMenuExtras(extras: ((citation: QuoteMenuCitation) => QuoteMenuChoice[]) | undefined): void {
+  quoteMenuExtras = extras;
+}
+
 /**
- * Opens the small menu a quote (Cite…) button shows: copy the citation, or cite in a project. Reuses the reader's anchored popover, so Escape or a
- * click outside closes it and the first item takes focus; clicking the same button again closes it.
+ * Opens the small menu a quote (Cite…) button shows: copy the citation, or cite in a project, then the page's extra choices for `citation`.
+ * Reuses the reader's anchored popover, so Escape or a click outside closes it and the first item takes focus; clicking the same button again closes it.
  */
-export function openQuoteMenu(anchor: HTMLElement, copy: QuoteMenuChoice, cite: () => void, placement: "below" | "above"): void {
+export function openQuoteMenu(anchor: HTMLElement, copy: QuoteMenuChoice, cite: () => void, placement: "below" | "above", citation: QuoteMenuCitation = {}): void {
   const menu = renderElement("div", { class: "rd-menu", role: "menu", "aria-label": "Cite" });
-  for (const choice of [copy, { label: "Cite in a project…", icon: "book-plus" as const, run: cite }]) {
+  for (const choice of [copy, { label: "Cite in a project…", icon: "book-plus" as const, run: cite }, ...(quoteMenuExtras?.(citation) ?? [])]) {
     const item = renderElement("button", { class: "rd-menu-item", type: "button", role: "menuitem" },
       renderElement("span", { class: "rd-menu-icon", html: renderIcon(choice.icon), "aria-hidden": "true" }),
       renderElement("span", { class: "rd-menu-label" }, choice.label));
@@ -85,7 +95,7 @@ export class SelectionBubble {
         openQuoteMenu(button, {
           label: "Copy with citation", icon: "copy",
           run: () => { this.ctx.host.post({ command: "copyWithCitation", text, pageNumber }); this.hide(); },
-        }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below");
+        }, () => { openCite({ page: pageNumber, quote: text }); this.hide(); }, "below", { page: pageNumber, quote: text });
       },
     };
   }

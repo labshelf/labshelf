@@ -275,3 +275,16 @@
 .ls-consult-chip-main:hover, .ls-consult-chip-main:focus-visible, .ls-consult-chip-close:hover, .ls-consult-chip-close:focus-visible { background: var(--ls-list-hover); color: var(--ls-fg); outline: none; }
 .ls-consult-footer svg { width: var(--ls-text-md); height: var(--ls-text-md); flex: none; }
 .ls-consult-chip-icon { display: inline-flex; flex: none; }
+
+/* A consult window's selection bubble (writing/consult/dom/consultActions.ts): the shared pill, above every floating window. */
+.ls-consult-bubble { position: fixed; z-index: 1050; }
+.ls-consult-bubble[hidden] { display: none; }
+/* A window that cites or lists keeps its fixed actions above its content, which scrolls on its own. */
+.ls-floating-window-body.ls-consult-with-actions { display: flex; flex-direction: column; overflow: hidden; }
+.ls-consult-with-actions > :not(.ls-consult-actions) { flex: 1; min-height: 0; overflow: auto; }
+.ls-consult-actions { flex: none; display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-3); border-bottom: 1px solid var(--ls-border); }
+.ls-consult-actions[hidden] { display: none; }
+.ls-consult-text { display: flex; flex-direction: column; }
+.ls-consult-text > * { flex: 1; min-height: 0; }
+/* Without its Consult button (the toolbar has one) the footer shows only while a window is open. */
+.ls-consult-footer[hidden] { display: none; }

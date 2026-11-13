@@ -7,6 +7,7 @@ import {
 } from "@labshelf/core";
 import type { WritingProjects } from "../writing/projects/index.js";
 import { resolveCodeFile } from "../writing/codeSource.js";
+import { deriveConsultCodeRoot } from "./consultIo.js";
 import { createDocumentSync } from "../writing/sourceEditor/documentSync.js";
 import { lineBreakOf, type SourceAuthorities } from "../writing/sourceEditor/authorities.js";
 import { createItemApplier } from "../writing/notesEditor/provider.js";
@@ -52,7 +53,7 @@ async function resolveTarget(deps: ConsultFilesDeps, ref: ConsultRef): Promise<T
       return { uri: vscode.Uri.file(createPaperFiles(paper.path, deps.projects.paths.join).notes), path: `${paper.title} notes.qmd` };
     }
     case "code": {
-      const root = deps.projectFolder === undefined ? undefined : vscode.Uri.file(deps.projectFolder);
+      const root = deriveConsultCodeRoot(deps.projectFolder);
       return { uri: resolveCodeFile(root, ref.path), path: ref.path };
     }
     default:

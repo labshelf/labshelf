@@ -30,10 +30,12 @@ describe("splitSourceActions", () => {
     expect(toolbar.map((group) => group.map(({ label, glyph }) => [label, glyph]))).toEqual([
       [["Bold", "bold"], ["Italic", "italic"]],
       [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"]],
-      [["Cite from Library", "quote"], ["Insert code", "code"], ["Link output", "chart"]],
+      [["Consult", "book"]],
       [["Search in Project", "search"], ["Indent Document", "indent"], ["Show Project History", "history"]],
     ]);
-    expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
+    expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([
+      ["citeFromLibrary", true], ["insertFromNote", true], ["insertCode", true], ["linkOutput", true], ["updateFromNote", true], ["showNoteDifferences", true],
+    ]);
   });
 
   it("runs the same actions as the tab did, and none of them edits without a target", () => {
@@ -52,7 +54,8 @@ describe("createSourceActions", () => {
       ["insertTable", "Insert Table", "table", false],
       ["insertImage", "Insert Image", "file-media", false],
       ["searchInProject", "Search in Project", "search", false],
-      ["citeFromLibrary", "Cite from Library", "quote", false],
+      ["consult", "Consult", "book", false],
+      ["citeFromLibrary", "Cite from Library", "quote", true],
       ["indentDocument", "Indent Document", "indent", false],
       ["bold", "Bold", "bold", true],
       ["italic", "Italic", "italic", true],
@@ -85,7 +88,18 @@ describe("createSourceActions", () => {
     expect(openSearch).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the editor's Cite from Library popup, and does nothing when the editor has none", () => {
+  it("opens Consult, on papers or code from Cite from Library and Insert code", () => {
+    const consult = jest.fn();
+    const entry = { kind: "ready", settings: { id: "p" } } as unknown as ProjectEntry;
+    const { run, citeFromLibrary } = setup({ target: () => ({ edits: {} as never, entry, citeFromLibrary: jest.fn(), consult }) });
+    run("consult");
+    run("citeFromLibrary");
+    run("insertCode");
+    expect(consult.mock.calls).toEqual([[], ["paper"], ["code"]]);
+    expect(citeFromLibrary).not.toHaveBeenCalled();
+  });
+
+  it("without Consult, opens the editor's Cite from Library popup, and does nothing when the editor has none", () => {
     const { run, citeFromLibrary } = setup();
     run("citeFromLibrary");
     expect(citeFromLibrary).toHaveBeenCalledTimes(1);

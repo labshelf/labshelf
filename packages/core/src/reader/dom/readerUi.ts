@@ -1,11 +1,11 @@
 // Builds the reader UI, the hover previews created after first render, and wires the host messages to them.
 import { deriveClampedPage, type WebviewToHost } from "../index.js";
 import { renderIcon } from "../../ui/index.js";
-import { findElement, renderElement } from "../../ui/dom/index.js";
+import { findElement, renderElement, showToast } from "../../ui/dom/index.js";
 import { PagePill, Toolbar } from "./toolbar.js";
 import { Cheatsheet, type ThemeController } from "./theme.js";
 import { ViewModes, openAppearancePopover } from "./appearance.js";
-import { SelectionBubble } from "./selectionBubble.js";
+import { SelectionBubble, setQuoteMenuExtras, type QuoteMenuCitation, type QuoteMenuChoice } from "./selectionBubble.js";
 import { PageHighlights } from "./pageHighlights.js";
 import { FindBar, type ChangeMarks } from "./findMarks.js";
 import { Zoom, type Keyboard, type SourceSync } from "./navigation.js";
@@ -34,7 +34,8 @@ import { formatError } from "../../errors/index.js";
 import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
 import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
-import { createConsult, type Consult, type ConsultSetup } from "../../writing/consult/dom/createConsult.js";
+import { createConsult, type Consult, type ConsultSetup, type ManuscriptWindow } from "../../writing/consult/dom/createConsult.js";
+import { createReaderCitation } from "../../writing/citations/citeFromReader.js";
 
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
@@ -65,6 +66,8 @@ export interface ReaderUi {
   previewChrome: PreviewChrome | null;
   /** Opens the build logs of a root; the paper reader has none and only records the call. */
   openLogs(rootPath: string): void;
+  /** The consult once the host offered one: Cite… starts on its last used manuscript window. */
+  consult: { current: Consult | undefined };
 }
 
 /**
@@ -74,7 +77,8 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const history = new NavigationHistory(ctx);
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
-  const openCite = createCiteOpener(ctx);
+  const consult: ReaderUi["consult"] = { current: undefined };
+  const openCite = createCiteOpener(ctx, consult);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage, openCite);
   const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus, ctx.viewState, ctx.boot.paperId);
   const highlights = new PageHighlights(ctx);
@@ -110,6 +114,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
     history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, equationTool, equationPopover, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
+    consult,
   };
   if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
@@ -119,10 +124,36 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
  * Builds the reader's consult over the host's setup (its windows float over the page) and shows its Consult button and chips in the toolbar.
  * @returns the consult, which the caller disposes when the page goes away.
  */
-export function mountReaderConsult(toolbar: Toolbar, setup: ConsultSetup): Consult {
+export function mountReaderConsult(ctx: ReaderContext, ui: Pick<ReaderUi, "toolbar" | "consult">, setup: ConsultSetup): Consult {
   const consult = createConsult({ ...setup, root: document.body, onError: (error) => console.warn("LabShelf reader: consult failed", error) });
-  toolbar.setConsult({ choose: consult.choose, windows: consult.windows });
+  ui.toolbar.setConsult({ choose: () => consult.choose(), windows: consult.windows });
+  ui.consult.current = consult;
+  const citeKey = ctx.boot.citeKey;
+  // The Cite… menus offer each open manuscript window: the citation goes at the window's cursor, and the paper into the project's bibliography.
+  if (!ctx.boot.preview && citeKey) {
+    const client = readerCiteClient(ctx.host);
+    setQuoteMenuExtras((citation) => consult.manuscripts().map((target) => citeInWindowChoice(target, citeKey, citation, client)));
+  }
   return consult;
+}
+
+/** Cite in <file>: writes the reader's citation over the window's selection, then asks the host to list the paper in the project's bibliography. */
+function citeInWindowChoice(target: ManuscriptWindow, citeKey: string, citation: QuoteMenuCitation, client: ReturnType<typeof readerCiteClient>): QuoteMenuChoice {
+  const format = target.ref.path.toLowerCase().endsWith(".typ") ? "typst" : "latex";
+  return {
+    label: `Cite in ${target.title}`, icon: "book-open",
+    run: () => {
+      const { view } = target;
+      const text = createReaderCitation(format, citeKey, citation, false);
+      const { from, to } = view.state.selection.main;
+      view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length }, scrollIntoView: true, userEvent: "input" });
+      target.window.raise();
+      void client.request({ kind: "bibliography", projectId: target.ref.projectId }).then((reply) => {
+        if (reply.kind === "error") throw new Error(reply.message);
+        showToast(`Cited ${citeKey} in ${target.title}`, "ok");
+      }).catch((error: unknown) => showToast(`Cited ${citeKey}, but the bibliography was not updated: ${formatError(error)}`, "error"));
+    },
+  };
 }
 
 type ToolbarParts = Pick<ReaderUi, "sidebar" | "findBar" | "cheatsheet" | "viewModes" | "boxTool" | "equationTool" | "bubble" | "goToPage"> & { openCite: ((page?: number, quote?: string) => void) | undefined };
@@ -150,12 +181,17 @@ function createReaderToolbar(ctx: ReaderContext, theme: ThemeController, parts: 
  * Opens the cite popup for a page and passage, both absent for the whole paper; the popup remembers the last project
  * and file for the reader's life. Undefined in a build preview, which shows no library paper, and for a paper without a cite key.
  */
-function createCiteOpener(ctx: ReaderContext): ((page?: number, quote?: string) => void) | undefined {
+function createCiteOpener(ctx: ReaderContext, consult: ReaderUi["consult"]): ((page?: number, quote?: string) => void) | undefined {
   const citeKey = ctx.boot.citeKey;
   if (ctx.boot.preview || !citeKey) { return undefined; }
   const client = readerCiteClient(ctx.host);
   const memory: CiteChoiceMemory = {};
-  return (page, quote) => { openCiteDialog({ client, citeKey, page, quote, memory, post: (message) => ctx.host.post(message) }); };
+  return (page, quote) => {
+    // A manuscript open in a consult window is the likely target, so the popup starts on it.
+    const open = consult.current?.manuscripts()[0];
+    if (open) { memory.projectId = open.ref.projectId; memory.path = open.ref.path; }
+    openCiteDialog({ client, citeKey, page, quote, memory, post: (message) => ctx.host.post(message) });
+  };
 }
 
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */
