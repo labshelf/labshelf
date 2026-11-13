@@ -114,10 +114,8 @@ describe("deployRelay", () => {
       ],
       keep_bindings: ["secret_text"],
       migrations: {
-        new_tag: "v4",
-        steps: [
-          { new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }, { new_sqlite_classes: ["Mirror"] }, { deleted_classes: ["Mirror"] },
-        ],
+        new_tag: "v2",
+        steps: [{ new_sqlite_classes: ["Room"] }, { new_sqlite_classes: ["Inbox"] }],
       },
     });
     const metadataPart = upload.form!.get("metadata") as Blob;
@@ -220,7 +218,7 @@ describe("removeRelay", () => {
   });
 });
 
-async function update(deployed: string, bundledVersion = "1.0.3", migrationTag = "v4") {
+async function update(deployed: string, bundledVersion = "1.0.3", migrationTag = "v2") {
   let tokenAsks = 0;
   const accessToken = async () => { tokenAsks += 1; return TOKEN; };
   const cloudflare = fakeCloudflare({ hasSubdomain: true, relayVersion: { v: deployed.split(".").slice(0, 2).join("."), worker: deployed, migrationTag } });
@@ -247,18 +245,13 @@ describe("updateRelayIfOlder", () => {
     expect(JSON.stringify(logger.calls)).not.toContain(TOKEN);
   });
 
-  it("sends the v3 and v4 steps to a Worker still on v2, binding Mirror in the share Worker", async () => {
-    const { requests, outcome } = await update("2.1.0", "2.3.0", "v2");
+  it("sends the v2 step to a Worker still on v1, binding Mirror in the share Worker", async () => {
+    const { requests, outcome } = await update("2.1.0", "2.3.0", "v1");
     expect(outcome).toBe("updated");
     expect(await metadataOf(requests[1]!)).toMatchObject({
       bindings: expect.arrayContaining([{ type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: "share" }]),
-      migrations: { old_tag: "v2", new_tag: "v4", steps: [{ new_sqlite_classes: ["Mirror"] }, { deleted_classes: ["Mirror"] }] },
+      migrations: { old_tag: "v1", new_tag: "v2", steps: [{ new_sqlite_classes: ["Inbox"] }] },
     });
-  });
-
-  it("sends only the v4 step, deleting the relay's Mirror class, to a Worker on v3", async () => {
-    const { requests } = await update("2.2.0", "2.3.0", "v3");
-    expect((await metadataOf(requests[1]!)).migrations).toEqual({ old_tag: "v3", new_tag: "v4", steps: [{ deleted_classes: ["Mirror"] }] });
   });
 
   it("updates across a higher minor and across a major", async () => {

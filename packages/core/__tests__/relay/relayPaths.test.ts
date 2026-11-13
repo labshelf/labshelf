@@ -96,8 +96,8 @@ describe("migrations on update", () => {
     expect(RELAY_MIGRATIONS[0]).toEqual({ tag: "v1", new_sqlite_classes: ["Room"] });
   });
 
-  it("ends the relay's list by deleting Mirror, which the share Worker's own list creates", () => {
-    expect(RELAY_MIGRATIONS.at(-1)).toEqual({ tag: "v4", deleted_classes: ["Mirror"] });
+  it("keeps Mirror out of the relay's list; the share Worker's own list creates it", () => {
+    expect(RELAY_MIGRATIONS.at(-1)).toEqual({ tag: "v2", new_sqlite_classes: ["Inbox"] });
     expect(SHARE_MIGRATIONS).toEqual([{ tag: "v1", new_sqlite_classes: ["Mirror"] }]);
   });
 });

@@ -50,9 +50,6 @@ export interface RelayMigration {
 export const RELAY_MIGRATIONS: readonly RelayMigration[] = [
   { tag: "v1", new_sqlite_classes: ["Room"] },
   { tag: "v2", new_sqlite_classes: ["Inbox"] },
-  { tag: "v3", new_sqlite_classes: ["Mirror"] },
-  // The remote library moved to the share Worker, which is never rotated; the relay binds it there by script name.
-  { tag: "v4", deleted_classes: ["Mirror"] },
 ];
 
 // INVARIANT: append only, as RELAY_MIGRATIONS; the share Worker's own Durable Object steps.

@@ -228,7 +228,7 @@ describe("updateOwnRelay", () => {
   });
 
   it("updates the share Worker first, giving one whose /version reads 404 every step, then the relay bound to it", async () => {
-    const run = await connected({ relayVersion: { v: "2.2", worker: "2.2.0", migrationTag: "v3" }, shareVersion: 404 });
+    const run = await connected({ relayVersion: { v: "2.2", worker: "2.2.0", migrationTag: "v2" }, shareVersion: 404 });
     expect(await updateOwnRelay({ ...run.world.deps, script: "relay()", shareScript: "share()" })).toBe("updated");
     const versionReads = run.world.cloudflare.requests.filter((request) => request.path.endsWith("/version")).map((request) => request.path);
     expect(versionReads).toEqual([`${connectedAccount.shareWorker.url}/version`, `${connectedAccount.relayUrl}/version`]);
@@ -236,7 +236,7 @@ describe("updateOwnRelay", () => {
     const share = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.shareWorker.name)!.form });
     expect(share.migrations).toEqual({ new_tag: "v1", steps: [{ new_sqlite_classes: ["Mirror"] }] });
     const relay = await metadataOf({ method: "PUT", path: "", headers: {}, form: run.world.scripts.get(connectedAccount.workerName)!.form });
-    expect(relay.migrations).toEqual({ old_tag: "v3", new_tag: "v4", steps: [{ deleted_classes: ["Mirror"] }] });
+    expect(relay).not.toHaveProperty("migrations");
     expect(relay.bindings).toContainEqual({
       type: "durable_object_namespace", name: "MIRROR", class_name: "Mirror", script_name: connectedAccount.shareWorker.name,
     });
@@ -244,7 +244,7 @@ describe("updateOwnRelay", () => {
 
   it("leaves a current share Worker alone", async () => {
     const current = { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v1" };
-    const run = await connected({ relayVersion: { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v4" }, shareVersion: current });
+    const run = await connected({ relayVersion: { v: "2.3", worker: RELAY_WORKER_BUILD, migrationTag: "v2" }, shareVersion: current });
     expect(await updateOwnRelay({ ...run.world.deps, script: "relay()", shareScript: "share()" })).toBe("current");
     expect(run.world.scriptCalls).toEqual([]);
   });
