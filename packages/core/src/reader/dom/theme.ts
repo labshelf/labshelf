@@ -28,7 +28,7 @@ export class ThemeController {
   private readonly themeListeners: Array<() => void> = [];
   /** The custom properties a custom theme set inline on <html>, cleared when a preset returns. */
   private inlineVars: string[] = [];
-  /** True while the theme follows the host's: the area around the pages is then the host's editor tone (reader.css), not the page colour. */
+  /** True while the theme follows the host's: the area around the pages is then the editor card's tone (reader.css), not the page colour. */
   private followsHost = false;
 
   /**
@@ -111,7 +111,7 @@ export class ThemeController {
     this.text = text;
     this.container.dataset["pdfLinkTone"] = isLightColour(bg) ? "dark" : "light";
     // On a desk the area around the pages is the preview stylesheet's.
-    // Following the host's theme, reader.css paints it with the host's editor tone instead.
+    // Following the host's theme, reader.css paints it with the editor card's tone instead.
     if (!this.desk) { this.container.style.background = this.followsHost ? "" : bg; }
     const viewer = this.pdfViewer;
     if (!viewer) { return; }

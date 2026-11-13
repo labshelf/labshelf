@@ -34,9 +34,10 @@ button { font: inherit; color: inherit; }
   border: 1px solid var(--ls-reader-border); border-radius: var(--ls-card-radius, 8px); overflow: hidden;
 }
 #sidebar-resizer:not([hidden]) + #pdf-shell { margin-left: 0; }
-/* A theme that follows the host's (auto) takes the host's surfaces, as the LabShelf editor does: the side bar's tone behind the card (the tone of
-   All papers) and the editor's inside it, around the pages. The pages keep the preset's colours. */
-[data-pdf-theme-follows="host"] { --ls-reader-bg: var(--ls-sidebar-bg, var(--ls-bg)); --ls-reader-card: var(--ls-bg); }
+/* A theme that follows the host's (auto) takes the surfaces the LabShelf editor has: the side bar's tone behind the card (the tone of All papers)
+   and, around the pages, the card tone of the editor and the build preview (preview.css), a step off the host's editor background. The pages
+   keep the preset's colours. */
+[data-pdf-theme-follows="host"] { --ls-reader-bg: var(--ls-sidebar-bg, var(--ls-bg)); --ls-reader-card: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg)); }
 [data-pdf-theme-follows="host"] #viewerContainer { background: var(--ls-reader-card); }
 #viewerContainer {
   position: absolute; inset: 0; overflow: auto; outline: none;
