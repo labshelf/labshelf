@@ -20,8 +20,6 @@ export interface ReaderEndpointIo {
   asWebviewUri(uri: vscode.Uri): vscode.Uri;
   /** Names what the reader shows, where the page has a title (a panel's tab). */
   setTitle?(title: string): void;
-  /** Runs before the details view toggles for the paper. */
-  onToggleDetails?(paperId: string): void;
 }
 
 /** The host side of one reader. */
@@ -45,10 +43,8 @@ export function createReaderEndpoint(deps: ReaderPanelDeps, source: ReaderSource
   const controller = new ReaderHostController({
     paper,
     store: source.store,
-    toggleDetails: async (paperId) => {
-      io.onToggleDetails?.(paperId);
-      await vscode.commands.executeCommand("labshelf.details.toggle");
-    },
+    // The details live in the list tab's right pane, so the button shows the paper there.
+    toggleDetails: async (paperId) => { await vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
     post,
     getPrefs: getReaderPrefs,
     autoTheme: readAutoReaderTheme,

@@ -48,7 +48,7 @@ function setup(root: string | undefined, register: RegisterPlatformWriting = fak
     paths: path, uriOf: (target: string) => vscode.Uri.file(target), fs: new NodeLibraryFileSystem(), createProjectData: () => data, createProjectWriteTracking: () => ({ fs: new NodeLibraryFileSystem(), beforeSave: async () => {}, afterSave: async () => {} }), deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
     reader: { locatePdfjs: () => null, isMac: false }, pdfjs, ...(convertDocument ? { convertDocument } : {}),
   };
-  const writing = registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register, { projectSelected: jest.fn(), projectsActivated: jest.fn() });
+  const writing = registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register);
   // The extension registers the note-link commands next to the writing view.
   registerNoteLinks(context as unknown as vscode.ExtensionContext, { projects: writing.projects, notes: writing.notes, logger: writing.logger, library: () => undefined });
   // So are the code-link commands and, where the platform reads source folders, the linked-output commands.

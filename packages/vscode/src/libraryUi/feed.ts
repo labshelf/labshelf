@@ -144,7 +144,7 @@ export class LibraryFeed implements vscode.Disposable {
   }
 }
 
-export type ListHostEvents = Pick<ListHostContext, 'onReady' | 'onNavigate' | 'onSelect'>;
+export type ListHostEvents = Pick<ListHostContext, 'onReady' | 'onNavigate'>;
 
 export function createFeedHostCompositionRoot(deps: ListPanelDeps, feed: LibraryFeed, reactions: ListHostEvents): ListHostContext {
   return {

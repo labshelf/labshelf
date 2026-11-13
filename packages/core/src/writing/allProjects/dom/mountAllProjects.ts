@@ -1,8 +1,8 @@
 /**
- * Mounts the All projects page: place tabs, search, and the project list, talking to its host only through the transport.
+ * Mounts the All projects page: place tabs, search, the project list and an optional detail pane, talking to its host only through the transport.
  * Host stylesheets: tokens.css, codeThemes.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
-import { buildFrame } from "../../../libraryUi/dom/index.js";
+import { buildFrame, renderDetailToggle } from "../../../libraryUi/dom/index.js";
 import type { ShareHost } from "../../../share/index.js";
 import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, showToast, type MenuAnchor, renderElement, mountPlaceHeader, type PlaceHeader, type PlaceHeaderHandlers } from "../../../ui/dom/index.js";
@@ -13,7 +13,7 @@ import {
 import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol.js";
 import { removeAllTrash, createProjectMenuEntries } from "./projectActions.js";
 import { mountProjectList, type ProjectListHandlers } from "./projectList.js";
-import { createPaneRequests } from "./projectDetailPane.js";
+import { createPaneRequests, mountProjectPane, type ProjectDetailPane } from "./projectDetailPane.js";
 import { createProjectExpansion, type ProjectExpansion } from "./projectTray.js";
 import { runShareProjectDialog } from "../../../collab/dom/index.js";
 import { mountInvitations } from "./invitations.js";
@@ -26,9 +26,9 @@ const PLACES: { id: ProjectPlace; label: string }[] = [
 export type HeaderHandlers = PlaceHeaderHandlers<ProjectPlace>;
 export type AllProjectsHeader = PlaceHeader<ProjectPlace>;
 
-export function mountAllProjectsHeader(container: HTMLElement, h: HeaderHandlers): AllProjectsHeader {
+export function mountAllProjectsHeader(container: HTMLElement, h: HeaderHandlers, trailing: readonly HTMLElement[] = []): AllProjectsHeader {
   return mountPlaceHeader<ProjectPlace>(container, {
-    places: PLACES, ariaLabel: "Project places", placeholder: "Search projects", inputClass: "ls-all-projects-search",
+    places: PLACES, ariaLabel: "Project places", placeholder: "Search projects", inputClass: "ls-all-projects-search", trailing,
     newLabel: "New project", newTitle: "New project", emptyTrashTitle: "Delete every project in the trash", withShare: true,
   }, h);
 }
@@ -65,6 +65,7 @@ interface PageState {
   commands: ProjectMenuCommand[];
   newKinds: CreateProjectKind[];
   selected: string | null;
+  openLabel: string;
 }
 
 export interface AllProjectsChannel {
@@ -72,6 +73,8 @@ export interface AllProjectsChannel {
   prefs: PanePrefsPort;
   /** The host's sharing operations; the project menu offers sharing only when present. */
   sharing?: ShareHost | undefined;
+  /** Adds a resizable pane right of the list with the details of the selected project. */
+  withDetail?: boolean;
 }
 
 const NEW_ENTRIES: ReadonlyArray<{ kind: CreateProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
@@ -127,18 +130,26 @@ function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): Pro
   };
 }
 
-function buildPageFrame(root: HTMLElement, prefs: PanePrefsPort, sharing: ShareHost | undefined): ReturnType<typeof buildFrame> {
-  const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, title: "Projects" });
+function buildPageFrame(root: HTMLElement, prefs: PanePrefsPort, sharing: ShareHost | undefined, withDetail: boolean): ReturnType<typeof buildFrame> {
+  const frame = buildFrame(root, prefs, { withSidebar: false, withCitationMap: false, withDetail, title: "Projects" });
   frame.root.classList.add("ls-all-projects");
   // Between the header and the list; the block hides itself while the host offers no project sharing.
   if (sharing) frame.list.before(mountInvitations(sharing).root);
   return frame;
 }
 
-export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing }: AllProjectsChannel): void {
-  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null };
+/** Fills the frame's detail column with the project pane. */
+function mountPaneColumn(column: HTMLElement, s: PageState, post: AllProjectsTransport["post"], sharing: ShareHost | undefined): ProjectDetailPane {
+  const slot = renderElement("aside", { class: "detail-pane", "aria-label": "Project details" });
+  column.append(slot);
+  return mountProjectPane(slot, { post, menu: () => ({ rows: s.rows, commands: s.commands, post, sharing }) });
+}
+
+export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing, withDetail = false }: AllProjectsChannel): void {
+  const s: PageState = { view: DEFAULT_PROJECT_VIEW, rows: [], commands: [], newKinds: ["blank", "template", "folder"], selected: null, openLabel: "Open" };
   const post = transport.post.bind(transport);
-  const frame = buildPageFrame(root, prefs, sharing);
+  const frame = buildPageFrame(root, prefs, sharing, withDetail);
+  const pane = frame.detail ? mountPaneColumn(frame.detail, s, post, sharing) : null;
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post, s.newKinds);
@@ -153,7 +164,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
     onEmptyTrash: () => void removeAllTrash(countPlaces(s.rows).trash, post),
     onLeaveSearch: () => list.focus(),
     onShare: () => { if (sharing && s.selected) void runShareProjectDialog(sharing, s.selected); },
-  });
+  }, frame.detail ? [renderDetailToggle(frame.root, prefs)] : []);
   const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set, sharing }, expansion.handlers));
   const selection = reportSelection(post);
 
@@ -166,6 +177,8 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
     header.setShare(shareState(sharing, s.selected));
     const empty = shown.size > 0 ? null : buildProjectEmptyState({ place: s.view.place, query: s.view.query, onClearQuery: () => set({ query: "" }), onNew });
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
+    const id = s.selected;
+    pane?.update({ row: id ? rowById(id) : undefined, detail: id ? details.get(id) : undefined, error: id ? details.error(id) : undefined, openLabel: s.openLabel });
     selection.update(s.selected);
   }
 
@@ -173,7 +186,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
     files: expansion.receive,
     detail: details.receive,
     projects: (message) => {
-      s.rows = message.rows; s.commands = message.commands; s.newKinds = message.newKinds;
+      s.rows = message.rows; s.commands = message.commands; s.newKinds = message.newKinds; s.openLabel = message.openLabel;
       render();
       if (s.selected) details.request(s.selected);
     },

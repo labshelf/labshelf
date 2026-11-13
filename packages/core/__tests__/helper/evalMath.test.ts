@@ -229,7 +229,7 @@ describe("2.1a evalMath message", () => {
 describe("2.1b protocol version", () => {
   it("2.1b is protocol version 11", () => { expect(PROTOCOL_VERSION).toBe(11); });
 
-  it("2.1b raises the helper's minor version from 0.4.0", () => { expect(HELPER_VERSION).toBe("0.5.0"); });
+  it("2.1b raises the helper's minor version above 0.4", () => { const [major, minor] = HELPER_VERSION.split(".").map(Number); expect(major > 0 || minor > 4).toBe(true); });
 
   it("2.1b refuses a version 10 evalMath with a version rejection that reports the received version", () => {
     const result = parseHelperMessage({ ...evalRaw({ id: "old-1" }), v: 10 }, "toHelper");

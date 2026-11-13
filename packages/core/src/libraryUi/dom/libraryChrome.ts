@@ -2,7 +2,7 @@
  * The library UI's chrome: the frame with its sash, the list header with its places and Share menu, and the column and paper menus.
  */
 import { renderElement, renderPageHeading, showMenu, showToast, mountPlaceHeader, type MenuAnchor, type MenuEntry } from "../../ui/dom/index.js";
-import { PANE_LIMITS, type PanePrefsPort, COLUMN_KEYS, type ListColumn, type LibraryPlace, listPlacePapers } from "../store/index.js";
+import { DEFAULT_PREFS, PANE_LIMITS, type PanePrefsPort, COLUMN_KEYS, type ListColumn, type LibraryPlace, listPlacePapers } from "../store/index.js";
 import { renderIcon, escapeHtml } from "../../ui/index.js";
 import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb, isUnderDir, PAPER_STATUSES, STATUS_LABEL } from "../../library/index.js";
 import { deriveScope, listPapersUnder, type ListPaper } from "../listModel.js";
@@ -25,9 +25,12 @@ export interface FrameSlots {
   list: HTMLElement;
   /** Present when the host asked for a citation map. */
   citationMap: HTMLElement | null;
+  /** Present when the host asked for a detail pane: the resizable column right of the list; the page fills it. */
+  detail: HTMLElement | null;
 }
 
 const SIDEBAR_COLLAPSED_CLASS = "sidebar-collapsed";
+const DETAIL_COLLAPSED_CLASS = "detail-collapsed";
 
 function sidebarSash(root: HTMLElement, sidebar: HTMLElement, prefs: PanePrefsPort): HTMLElement {
   const sash = renderElement("div", { class: "sash sash-sidebar", title: "Drag to resize" });
@@ -39,9 +42,22 @@ function sidebarSash(root: HTMLElement, sidebar: HTMLElement, prefs: PanePrefsPo
   return sash;
 }
 
+function detailSash(root: HTMLElement, detail: HTMLElement, prefs: PanePrefsPort): HTMLElement {
+  const sash = renderElement("div", { class: "sash sash-detail", title: "Drag to resize" });
+  attachSash(sash, {
+    root, pane: detail, collapsedClass: DETAIL_COLLAPSED_CLASS, limits: PANE_LIMITS.detail,
+    widthFromPointer: (x) => root.getBoundingClientRect().right - x,
+    persist: (width, collapsed) => prefs.save({ detailWidth: width, detailCollapsed: collapsed }),
+    defaultWidth: DEFAULT_PREFS.detailWidth,
+  });
+  return sash;
+}
+
 export interface FrameOptions {
   withSidebar: boolean;
   withCitationMap: boolean;
+  /** Adds a resizable detail pane right of the list. */
+  withDetail?: boolean;
   /** The page name shown in the heading above the list header. */
   title: string;
 }
@@ -65,8 +81,23 @@ export function buildFrame(host: HTMLElement, prefs: PanePrefsPort, options: Fra
     root.append(sidebar, sidebarSash(root, sidebar, prefs));
   }
   root.append(listPane);
+  let detail: HTMLElement | null = null;
+  if (options.withDetail) {
+    detail = renderElement("div", { class: "ls-details ls-tab-details" });
+    detail.style.width = `${saved.detailWidth ?? DEFAULT_PREFS.detailWidth}px`;
+    root.classList.add("has-detail");
+    root.classList.toggle(DETAIL_COLLAPSED_CLASS, saved.detailCollapsed ?? false);
+    root.append(detailSash(root, detail, prefs), detail);
+  }
   host.append(root);
-  return { root, sidebar, heading, header, list, citationMap };
+  return { root, sidebar, heading, header, list, citationMap, detail };
+}
+
+/** The header button that shows or hides a frame's detail pane, and saves that. */
+export function renderDetailToggle(root: HTMLElement, prefs: PanePrefsPort): HTMLElement {
+  const button = renderElement("button", { class: "ls-icon-btn detail-toggle", type: "button", title: "Toggle details panel", "aria-label": "Toggle details panel", html: renderIcon("panel-right") });
+  button.addEventListener("click", () => { prefs.save({ detailCollapsed: root.classList.toggle(DETAIL_COLLAPSED_CLASS) }); });
+  return button;
 }
 
 /** Toggles the sidebar and saves the new state; returns whether it is now collapsed. */
@@ -189,13 +220,13 @@ function showShareMenu(ctx: UiContext, sharing: ShareHost, anchor: HTMLElement):
   ]);
 }
 
-/** Fills the list header with the shared place header and shows the folder path in `heading`, the page title: Library large, the folders after it smaller. Returns the unmount. */
-export function mountListHeader(ctx: UiContext, container: HTMLElement, heading: HTMLElement): () => void {
+/** Fills the list header with the shared place header and shows the folder path in `heading`, the page title: Library large, the folders after it smaller; `trailing` goes after the buttons. Returns the unmount. */
+export function mountListHeader(ctx: UiContext, container: HTMLElement, heading: HTMLElement, trailing: readonly HTMLElement[] = []): () => void {
   const sharing = ctx.readOnly ? undefined : ctx.sharing;
   const header = mountPlaceHeader<LibraryPlace>(container, {
     places: PLACES, ariaLabel: "Library places", placeholder: "Search papers", inputClass: "ls-library-search",
     newLabel: "Add", newTitle: ctx.labels.addTooltip, emptyTrashTitle: "Delete every paper in the trash",
-    leading: [sidebarToggle(ctx)], searchTitle: SEARCH_SYNTAX_TIP, withNew: !ctx.readOnly, withShare: !!sharing,
+    leading: [sidebarToggle(ctx)], trailing, searchTitle: SEARCH_SYNTAX_TIP, withNew: !ctx.readOnly, withShare: !!sharing,
     // The list's own shortcuts bind "/" and select the query text.
     slashKey: false,
   }, {

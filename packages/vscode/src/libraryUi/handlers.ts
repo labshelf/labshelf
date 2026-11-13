@@ -59,8 +59,6 @@ export interface ListHostContext {
   onReady(): Promise<void>;
   /** The UI opened a folder (absolute path). */
   onNavigate(dir: string): void;
-  /** The UI's selection changed; empty when nothing is selected. */
-  onSelect(ids: string[]): void;
   /** Serves a paper note's files over the library file system; without it a pick works but reads and writes fail with a notice. */
   noteFileIo?: NoteFileIo;
 }
@@ -342,7 +340,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.addToSpace':
       if (ctx.deps.addToSpace && await ctx.deps.addToSpace(m.ids)) { ctx.notice('ok', 'Added to Space'); }
       return true;
-    case 'paper.selected': ctx.onSelect(m.ids); return true;
+    case 'paper.selected': return true; // the list pane shows the selection itself; the host has no consumer
     case 'paper.open': await runCommand(ctx, 'labshelf.openPdfViewer', m.id, ...(m.page ? [m.page] : [])); return true;
     case 'paper.openExternal': await runCommand(ctx, 'labshelf.openPaperPdfExternal', m.id); return true;
     case 'paper.reveal': await revealPaper(ctx, m.id); return true;

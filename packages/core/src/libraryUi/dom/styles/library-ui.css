@@ -1,5 +1,5 @@
 /*
- * Styles the library UI frame, sashes and list header under .ls-library, the Details surface frame under .ls-details, and the
+ * Styles the library UI frame, sashes, detail pane column and list header under .ls-library, the Details surface frame under .ls-details, and the
  * helpers both share, on the --ls-* tokens. Requires tokens.css and base.css; the list and the detail pane have their own sheets.
  */
 .ls-library {
@@ -35,6 +35,15 @@ body, #root { display: flex; flex-direction: column; }
 .ls-library.sidebar-collapsed .sidebar { display: none; }
 .ls-library .list-pane { container: list-pane / inline-size; flex: 1; background: var(--ls-sidebar-bg); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .ls-library .list-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* The detail pane a list tab shows on its right: a Details surface at the width the sash keeps. */
+.ls-library > .ls-tab-details { flex: none; background: var(--ls-sidebar-bg); border-left: 1px solid var(--ls-sidebar-border); }
+.ls-library .sash-detail { margin-right: calc(-1 * var(--ls-space-1)); }
+.ls-library.detail-collapsed > .ls-tab-details { display: none; }
+.ls-library.detail-collapsed .sash-detail { background: var(--ls-border); }
+.ls-library.detail-collapsed .sash-detail:hover { background: var(--ls-focus); }
+/* PLATFORM: the pane and the placeholder set display, which beats the hidden attribute, so hidden is restated here. */
+.ls-tab-details > :is(.detail-pane, .detail-placeholder)[hidden] { display: none; }
+.ls-library .detail-toggle { margin-left: var(--ls-space-1); }
 
 /* ── Details surface ────────────────────────────────────────────── */
 .ls-details { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }

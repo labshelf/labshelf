@@ -1,4 +1,4 @@
-// Hosts the Project chat webview view in the LabShelf Details side bar: it exists only while the open project is shared (D2), and while it
+// Hosts the Project chat webview view in the LabShelf Chat side bar: it exists only while the open project is shared (D2), and while it
 // shows it serves the project's .labshelf/chat.qmd with the share's presence over the page channel.
 // CONTRACT: documents/contracts/qmd-items.md#project-chat
 import * as vscode from "vscode";

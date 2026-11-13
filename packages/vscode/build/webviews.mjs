@@ -11,7 +11,6 @@ const BUNDLES = {
   "reader/reader": "src/reader/webview/readerEntry.ts",
   "library/library": "src/libraryUi/webview/libraryEntry.ts",
   "library/sidebar": "src/libraryUi/webview/sidebarEntry.ts",
-  "library/details": "src/libraryUi/webview/detailsEntry.ts",
   "templates/templates": "src/writing/templates/webview/galleryEntry.ts",
   "search/search": "src/writing/search/webview/searchEntry.ts",
   "history/history": "src/writing/history/webview/historyEntry.ts",

@@ -49,7 +49,6 @@
         "src/node/helperHost.ts",
         "src/reader/webview/readerEntry.ts",
         "src/libraryUi/webview/libraryEntry.ts",
-        "src/libraryUi/webview/detailsEntry.ts",
         "src/writing/templates/webview/galleryEntry.ts",
         "src/libraryUi/webview/sidebarEntry.ts",
         "src/writing/search/webview/searchEntry.ts",

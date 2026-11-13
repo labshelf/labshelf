@@ -1,7 +1,7 @@
 /**
  * Opens the editor tab that browses the library: a webview running the shared library UI, which this panel feeds with
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers. Also declares the host
- * services the panel consumes and builds the HTML shell of the library webviews (the list, the sidebar, the Details view).
+ * services the panel consumes and builds the HTML shell of the library webviews (the list and the sidebar).
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
@@ -50,10 +50,6 @@ export interface ListPanelDeps {
   citationMap: CitationMapPorts;
   /** Called whenever the panel shows a different folder, so the sidebar tree can follow. */
   onDidNavigate?: (folder: LibraryNode) => void;
-  /** Called with every selection the panel reports, empty when it clears; feeds the Details view. */
-  onDidChangeSelection?: (paperIds: string[]) => void;
-  /** Called when the panel's tab becomes the active one. */
-  onDidActivate?: () => void;
   /** Papers waiting for or undergoing OCR, shown on their rows while it runs. */
   textLayerJobs?: {
     current: () => TextLayerJobView[];
@@ -86,9 +82,9 @@ export function readLibraryBundleDir(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'dist', 'library');
 }
 
-const REOPEN = { library: 'the list', sidebar: 'the sidebar', details: 'the Details view' } as const;
+const REOPEN = { library: 'the list', sidebar: 'the sidebar' } as const;
 
-export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri, bundle: 'library' | 'sidebar' | 'details' = 'library'): Promise<string> {
+export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri, bundle: 'library' | 'sidebar' = 'library'): Promise<string> {
   const dir = readLibraryBundleDir(extensionUri);
   const script = vscode.Uri.joinPath(dir, `${bundle}.js`);
   if (!(await hasBundleFile(script))) {
@@ -176,7 +172,6 @@ export class ListWebviewPanel {
     });
     this._panel.webview.onDidReceiveMessage((raw: unknown) => answerListMessage(this._host, raw), null, this._disposables);
     this._disposables.push(sharingWebviews.attach(this._panel.webview));
-    this._panel.onDidChangeViewState((e) => { if (e.webviewPanel.active) { this._deps.onDidActivate?.(); } }, null, this._disposables);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
   }
 
@@ -215,7 +210,6 @@ export class ListWebviewPanel {
         if (this._citationMapRequested) { this._citationMapRequested = false; await showCitationMap(this._host); }
       },
       onNavigate: (dir) => this._showFolder(this._nodeFor(dir), false),
-      onSelect: (ids) => this._deps.onDidChangeSelection?.(ids),
     });
   }
 

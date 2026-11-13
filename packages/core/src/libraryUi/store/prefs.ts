@@ -19,6 +19,9 @@ export interface LibraryUiPrefs {
   columns: ListColumn[];
   sidebarWidth: number;
   sidebarCollapsed: boolean;
+  /** Width of the detail pane a list tab shows beside its rows. */
+  detailWidth: number;
+  detailCollapsed: boolean;
   secCollapsed: Record<string, boolean>;
   detailTab: DetailsTab;
   citeFormat: CitationFormat;
@@ -31,8 +34,8 @@ export interface PrefsPort {
   save(patch: Partial<LibraryUiPrefs>): void;
 }
 
-/** The two keys the pane frame persists; a host that shows panes without the rest of the library prefs stores only these. */
-export type PanePrefs = Pick<LibraryUiPrefs, "sidebarWidth" | "sidebarCollapsed">;
+/** The keys the pane frame persists; a host that shows panes without the rest of the library prefs stores only these. The detail keys matter only to a frame with a detail pane. */
+export type PanePrefs = Pick<LibraryUiPrefs, "sidebarWidth" | "sidebarCollapsed"> & Partial<Pick<LibraryUiPrefs, "detailWidth" | "detailCollapsed">>;
 
 export interface PanePrefsPort {
   load(): PanePrefs;
@@ -46,9 +49,10 @@ export const COLUMN_KEYS: readonly ListColumn[] = ["creator", "venue", "year", "
 
 export const DEFAULT_COLUMNS: ListColumn[] = ["creator", "year", "status"];
 
-/** Drag limits of the sidebar; dragging below `collapseAt` hides it. */
+/** Drag limits of the side panes; dragging below `collapseAt` hides the pane. */
 export const PANE_LIMITS = {
   sidebar: { min: 160, max: 420, collapseAt: 110 },
+  detail: { min: 260, max: 760, collapseAt: 180 },
 } as const;
 
 export const DEFAULT_PREFS: LibraryUiPrefs = {
@@ -57,6 +61,8 @@ export const DEFAULT_PREFS: LibraryUiPrefs = {
   columns: DEFAULT_COLUMNS,
   sidebarWidth: 220,
   sidebarCollapsed: false,
+  detailWidth: 360,
+  detailCollapsed: false,
   secCollapsed: {},
   detailTab: "details",
   citeFormat: "bibtex",
@@ -107,6 +113,8 @@ export function normalizePrefs(raw: unknown): LibraryUiPrefs {
     columns,
     sidebarWidth: num(r["sidebarWidth"], d.sidebarWidth, PANE_LIMITS.sidebar),
     sidebarCollapsed: bool(r["sidebarCollapsed"], d.sidebarCollapsed),
+    detailWidth: num(r["detailWidth"], d.detailWidth, PANE_LIMITS.detail),
+    detailCollapsed: bool(r["detailCollapsed"], d.detailCollapsed),
     secCollapsed: isBoolMap(r["secCollapsed"]) ? r["secCollapsed"] : { ...d.secCollapsed },
     detailTab: oneOf(r["detailTab"], DETAIL_TABS, d.detailTab),
     citeFormat: oneOf(r["citeFormat"], CITE_FORMATS, d.citeFormat),

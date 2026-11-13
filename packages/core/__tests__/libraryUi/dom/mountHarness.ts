@@ -1,12 +1,12 @@
 /**
- * Mounts the library UI in jsdom against an in-test host that records every message the UI sends, with a detail pane
- * beside it that shares the list's store.
+ * Mounts the library UI in jsdom against an in-test host that records every message the UI sends, with its detail pane
+ * beside the list.
  */
 import {
   DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
 import type { ShareHost } from "../../../src/share/index";
-import { createUiCompositionRoot, mountDetailPane, mountLibraryUi } from "../../../src/libraryUi/dom";
+import { mountLibraryUi } from "../../../src/libraryUi/dom";
 
 export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: `key-${id}`, status: "unread", ...extra };
@@ -35,16 +35,10 @@ export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: 
   const container = document.createElement("div");
   document.body.append(container);
   const lib = mountLibraryUi(container, {
-    transport: ui, capabilities, labels: LABELS, ...extra,
+    transport: ui, capabilities, labels: LABELS, withDetail: true, ...extra,
     prefs: { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p) => saved.push(p) },
   });
-  const detailEl = document.createElement("aside");
-  detailEl.className = "detail-pane";
-  container.append(detailEl);
-  const prefsPort = { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p: Partial<LibraryUiPrefs>) => { saved.push(p); } };
-  const detailCtx = createUiCompositionRoot(container, { store: lib.store, transport: ui, prefs: prefsPort, caps: capabilities, labels: LABELS, readOnly: false });
-  const offDetail = mountDetailPane(detailCtx, detailEl);
-  disposePrevious = () => { offDetail(); lib.dispose(); };
+  disposePrevious = () => { lib.dispose(); };
   const snapshot = (papers: PaperRecord[], pdfDirs: string[] = [], folders: Folders = [], stats: Record<string, PaperStats> = {}): void =>
     host.post({ type: "snapshot", snapshot: JSON.parse(JSON.stringify({ folders, papers, pdfDirs, stats })) });
   const rows = (): HTMLElement[] => [...container.querySelectorAll<HTMLElement>(".paper-row")];

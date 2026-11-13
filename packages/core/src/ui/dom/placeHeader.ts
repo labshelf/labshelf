@@ -17,6 +17,8 @@ export interface PlaceHeaderOptions<P extends string> {
   emptyTrashTitle: string;
   /** Nodes placed before the tabs, such as the Library's sidebar toggle. */
   leading?: readonly HTMLElement[];
+  /** Nodes placed after the buttons, such as the detail pane toggle. */
+  trailing?: readonly HTMLElement[];
   /** The search box's tooltip, such as the search syntax. */
   searchTitle?: string;
   /** Renders the New button; defaults to true. */
@@ -104,6 +106,7 @@ export function mountPlaceHeader<P extends string>(container: HTMLElement, o: Pl
   container.classList.add("ls-place-header");
   container.innerHTML = headerHtml(o);
   container.prepend(...(o.leading ?? []));
+  container.append(...(o.trailing ?? []));
   const lifecycle = new AbortController();
   const tabs = container.querySelector<HTMLElement>(".ls-place-tabs")!;
   const search = container.querySelector<HTMLInputElement>(`input.${o.inputClass}`)!;

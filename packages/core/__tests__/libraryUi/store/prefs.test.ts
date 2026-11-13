@@ -8,11 +8,11 @@ describe("sanitizePrefs", () => {
 
   it("validates every field and clamps widths", () => {
     const prefs = normalizePrefs({
-      sortKey: "bogus", sortDir: -1, sidebarWidth: 10,
+      sortKey: "bogus", sortDir: -1, sidebarWidth: 10, detailWidth: 5000, detailCollapsed: "yes",
       sidebarCollapsed: true, secCollapsed: { info: true, notes: "x" },
     });
     expect(prefs).toEqual({
-      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, sidebarWidth: 160,
+      ...DEFAULT_PREFS, sortKey: "title", sortDir: -1, sidebarWidth: 160, detailWidth: 760,
       sidebarCollapsed: true, secCollapsed: DEFAULT_PREFS.secCollapsed,
     });
   });

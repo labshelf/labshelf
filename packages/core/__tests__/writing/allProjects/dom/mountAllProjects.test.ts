@@ -9,7 +9,7 @@ import { row } from "./detailPane/fixtures";
 import { fakeHost, tick } from "../../../collab/dom/fakeHost";
 import type { ShareHost } from "../../../../src/share/index";
 
-function mountPage(sharing?: ShareHost) {
+function mountPage(sharing?: ShareHost, withDetail = false) {
   document.body.innerHTML = "";
   const root = document.createElement("div");
   document.body.append(root);
@@ -24,7 +24,7 @@ function mountPage(sharing?: ShareHost) {
     post: (m: AllProjectsToHost): void => { sent.push(m); },
     subscribe: (h: (m: HostToAllProjects) => void) => { handlers.add(h); return () => { handlers.delete(h); }; },
   };
-  mountAllProjects(root, { transport, prefs, sharing });
+  mountAllProjects(root, { transport, prefs, sharing, withDetail });
   const frame = root.firstElementChild as HTMLElement;
   return { root, frame, sent, saved, deliver: (m: HostToAllProjects): void => { for (const h of [...handlers]) h(m); } };
 }
@@ -91,4 +91,21 @@ describe("Share", () => {
     t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
     expect(share(t.frame).disabled).toBe(true);
   });
+});
+
+it("has no detail pane unless the host asks for one", () => {
+  const t = mountPage();
+  expect(t.frame.querySelector(".ls-tab-details")).toBeNull();
+  expect(t.frame.querySelector(".detail-toggle")).toBeNull();
+});
+
+it("shows the selected project in the detail pane and asks the host for its detail", () => {
+  const t = mountPage(undefined, true);
+  t.deliver({ type: "projects", rows: [row], commands: [], newKinds: ["blank"], openLabel: "Open in VS Code" });
+  const pane = t.frame.querySelector<HTMLElement>(".ls-library > .ls-tab-details > .detail-pane")!;
+  expect(pane.textContent).toContain("Select a project to see its details.");
+  t.frame.querySelector<HTMLElement>(`.paper-row[data-id="${row.id}"] .paper-row-main`)!.click();
+  expect(pane.querySelector(".detail-title")?.textContent).toBe(row.title);
+  expect(pane.querySelector('[data-action="open"]')?.textContent).toBe("Open in VS Code");
+  expect(t.sent).toContainEqual(expect.objectContaining({ type: "detail", id: row.id }));
 });
