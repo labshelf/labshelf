@@ -85,4 +85,4 @@ sessions:
   - id: "10"
     file: sessions/10.yaml
     depends_on: ["9"]
-    owns: [packages/core/src/reader/protocol/messages.ts, packages/core/src/reader/hostMessages.ts, packages/core/src/reader/hostPorts.ts, packages/core/src/reader/dom/, packages/vscode/src/reader/, packages/browser/src/libraryUi/reader/]
+    owns: [documents/plans/local-sync/, documents/contracts/local-sync.md, documents/code.md, packages/core/src/, packages/core/__tests__/, packages/vscode/src/, packages/vscode/__tests__/, packages/browser/src/, packages/browser/__tests__/, scripts/lint/modulesBaseline.json, scripts/lint/duplicatesBaseline.json]
