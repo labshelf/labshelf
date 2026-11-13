@@ -3,10 +3,10 @@
 // Browse… (where the host can show a file dialog) adds a code file from anywhere on the machine to the list.
 // CONTRACT: documents/contracts/library-format.md#code-listings
 import { EditorState, type Extension } from "@codemirror/state";
-import { Decoration, EditorView, drawSelection, lineNumbers } from "@codemirror/view";
+import { Decoration, EditorView } from "@codemirror/view";
 import { describeAnchor, excerptFromLines, readCodeExcerpt, type CodeExcerpt, type CodeLinkSource } from "../../codeLinks/index.js";
-import { mountCombobox, readPageNonce, renderElement, renderPickerDialog, renderTextButton } from "../../../ui/dom/index.js";
-import { editorTheme } from "./editorTheme.js";
+import { mountCombobox, renderElement, renderPickerDialog, renderTextButton } from "../../../ui/dom/index.js";
+import { codeViewExtensions } from "./codeView.js";
 
 /** Where the popup lists and reads code files: paths relative to the project folder. */
 export type CodePickSource = CodeLinkSource & {
@@ -41,14 +41,11 @@ const selectedLineMarks = EditorView.decorations.compute(["selection"], (state) 
   return Decoration.set(ranges);
 });
 
-function codeExtensions(onSelect: () => void): Extension[] {
-  return [
-    EditorView.cspNonce.of(readPageNonce()),
-    EditorView.contentAttributes.of({ "aria-label": "Code; select the lines to insert, or nothing for the whole file" }),
-    EditorState.readOnly.of(true),
-    lineNumbers(), drawSelection(), editorTheme, selectedLineMarks,
-    EditorView.updateListener.of((update) => { if (update.selectionSet || update.docChanged) { onSelect(); } }),
-  ];
+function codeExtensions(path: string, onSelect: () => void): Extension[] {
+  return codeViewExtensions({
+    path, readOnly: true, label: "Code; select the lines to insert, or nothing for the whole file",
+    extensions: [selectedLineMarks, EditorView.updateListener.of((update) => { if (update.selectionSet || update.docChanged) { onSelect(); } })],
+  });
 }
 
 /** One open Insert code popup; `resolve` answers `pickCodeExcerpt` once, when it closes. */
@@ -68,7 +65,7 @@ class CodePickPopup {
 
   constructor(private readonly source: CodePickSource, private readonly memory: CodePickMemory, private readonly resolve: (excerpt: CodeExcerpt | undefined) => void) {
     const editor = renderElement("div", { class: "rd-cite-dialog-editor ls-code-pick-view" });
-    this.view = new EditorView({ parent: editor, state: EditorState.create({ doc: "", extensions: codeExtensions(() => this.describe()) }) });
+    this.view = new EditorView({ parent: editor, state: EditorState.create({ doc: "", extensions: codeExtensions("", () => this.describe()) }) });
     this.dialog.body.append(editor);
     this.addBrowse();
     this.wire();
@@ -139,7 +136,7 @@ class CodePickPopup {
     this.memory.path = path;
     this.picker.input.value = path;
     this.shown = { path, text };
-    this.view.setState(EditorState.create({ doc: text, extensions: codeExtensions(() => this.describe()) }));
+    this.view.setState(EditorState.create({ doc: text, extensions: codeExtensions(path, () => this.describe()) }));
     this.describe();
   }
 
