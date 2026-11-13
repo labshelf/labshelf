@@ -6,6 +6,9 @@ import {
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
 import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type SourceEditor, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import type { Consult } from "@labshelf/core/consult";
+import { createBrowserConsult } from "../../consult/consultHost";
+import type { LiveFiles } from "../../localSync/liveFiles";
 import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import {
   createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
@@ -26,11 +29,12 @@ const MODULE = "tabs.source";
 /** A live file this tab holds, and the collab the editor is mounted over; `release` lets the file go. */
 interface LiveBinding { collab: NonNullable<SourceEditorDeps["collab"]>; release: () => Promise<void> }
 
-/** Opens a local file as a live file, so every tab of it edits one replica; undefined without live files or when the replica fails, and the editor then reads the disk. */
-async function openLiveBinding({ logger }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }): Promise<LiveBinding | undefined> {
-  // A page that cannot start its live files edits the files as it did before.
-  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error(MODULE, error, { action: "readLiveFiles", message: formatError(error) }); return undefined; });
-  if (!live) return undefined;
+/** The page's live files; undefined when the page cannot start them, and it then edits the files as it did before. */
+const readLiveFiles = ({ logger }: TabContext): Promise<LiveFiles | undefined> =>
+  Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error(MODULE, error, { action: "readLiveFiles", message: formatError(error) }); return undefined; });
+
+/** Opens a local file as a live file, so every tab of it edits one replica; undefined when the replica fails, and the editor then reads the disk. */
+async function openLiveBinding({ logger }: TabContext, live: LiveFiles, entry: ProjectEntry, file: { projectId: string; path: string }): Promise<LiveBinding | undefined> {
   const opened = live.open(fullPathOf(entry, file.path));
   try {
     await opened.replica.ready;
@@ -51,6 +55,12 @@ async function loadEditor(
   const { session, sharing } = project();
   const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   let live: LiveBinding | undefined;
+  let consult: Consult | undefined;
+  // The consult windows close before the tab lets its own replica go, which a window of the same file shares.
+  const release = async (): Promise<void> => {
+    await consult?.dispose();
+    await live?.release();
+  };
   try {
     const loadingModule = loadSourceEditor();
     const entry = await findProject(fs, logger, session.current(), projectId);
@@ -58,26 +68,28 @@ async function loadEditor(
     if (disposed()) return undefined;
     const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
-    live = mode.kind === "local" ? await openLiveBinding(context, entry, { projectId, path }) : undefined;
-    if (disposed()) { await live?.release(); return undefined; }
+    const pageLive = await readLiveFiles(context);
+    live = mode.kind === "local" && pageLive ? await openLiveBinding(context, pageLive, entry, { projectId, path }) : undefined;
+    if (disposed()) { await release(); return undefined; }
     // A talk's or poster's workspace hears the editor's text and cursor through this feed.
     const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
     // The typing helpers start as the library file has them and follow it while the editor is open.
     const prefs = editorPrefsOf(fs, logger);
     const typing = await prefs.typing();
     const selectionPopup = await prefs.selectionPopup();
-    if (disposed()) return undefined;
+    if (disposed()) { await release(); return undefined; }
+    // Without the page's replica hub there is nothing for a consult window to share, so the editor shows no consult footer.
+    consult = pageLive ? createBrowserConsult({ fs, logger, live: pageLive, projectId }) : undefined;
     // The bibliography update after a citation saves the file through the editor that is mounted by then.
     let mounted: SourceEditor | undefined;
     const collab = mode.kind === "shared" ? mode.collab : live?.collab;
-    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false, collab), typing, selectionPopup, inserts: file.inserts });
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false, collab, consult), typing, selectionPopup, inserts: file.inserts });
     mounted = editor;
     loading.remove();
-    const release = live?.release ?? (async () => undefined);
     if (disposed()) { void editor.dispose().then(release); return undefined; }
     return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor), release };
   } catch (error) {
-    void live?.release();
+    void release();
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
     return undefined;
@@ -116,7 +128,7 @@ interface SourceTabState {
   mode: SourceFileMode | undefined;
   /** Ends the editor's following of the typing helpers and the selection popup in editor-prefs.json. */
   stopTyping?: (() => void) | undefined;
-  /** Lets the file's live file go; runs after the editor that edits its replica is disposed. */
+  /** Closes the tab's consult windows, then lets the file's live file go; runs after the editor that edits its replica is disposed. */
   release?: (() => Promise<void>) | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;

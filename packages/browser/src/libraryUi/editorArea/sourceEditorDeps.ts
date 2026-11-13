@@ -5,6 +5,7 @@ import {
 } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
+import type { Consult } from "@labshelf/core/consult";
 import type { CodeFileSource, ReviewMode, SourceEditorDeps, SourceFileAccess } from "@labshelf/core/sourceEditor";
 import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import { addProjectUpdateEvent, createLibraryCitationWiring, type LibraryCitationWiring, type SourceFileMode } from "../../writing";
@@ -59,7 +60,7 @@ function projectFiles(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntr
 }
 
 /** The code files Insert code lists and the listings link to: a path climbing out of the library folder is unreadable here, so its listing gets no mark; a missing file is undefined. */
-function codeLinkSource(fs: LibraryFileSystem, entry: ProjectEntry): CodeFileSource {
+export function codeLinkSource(fs: LibraryFileSystem, entry: ProjectEntry): CodeFileSource {
   const inLibrary = (path: string): string => path.split("/").reduce((segments, segment) => {
     if (segment === "..") { if (segments.pop() === undefined) throw new Error("outside the library folder"); } else if (segment !== "" && segment !== ".") segments.push(segment);
     return segments;
@@ -165,18 +166,22 @@ function reviewDeps({ workspace, project }: TabContext, { projectId, path }: Edi
   };
 }
 
-/** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
+/**
+ * What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share.
+ * @param consult the tab's consult windows, whose footer the editor shows; none without the page's live files
+ */
 export function editorDeps(context: TabContext, entry: ProjectEntry, file: EditorFile, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
-  flush: () => Promise<boolean>, collab: SourceEditorDeps["collab"],
+  flush: () => Promise<boolean>, collab: SourceEditorDeps["collab"], consult: Consult | undefined,
 ): SourceEditorDeps {
   const { fs, logger, tab, workspace, project } = context;
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
   const citations = entry.kind === "ready" ? createLibraryCitationWiring({ fs, logger, entry, flush, papers: listCachedPaperRecords }) : undefined;
+  const extensions = [...(feed ? [feed.extension] : []), ...(consult ? [consult.footer()] : [])];
   return {
     projectId, path, files: projectFiles(fs, logger, entry, readOnly ? undefined : citations?.reanchor),
     helper: project().helperProject.editorPort(projectId), problems: project().helperProject.problems.subscribe,
-    ...(feed ? { extensions: [feed.extension] } : {}),
+    ...(extensions.length > 0 ? { extensions } : {}),
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
     ...footerSwitches(context), ...paperDeps(context),
     ...(citations ? { scopesOf: citations.scopesOf } : {}),
