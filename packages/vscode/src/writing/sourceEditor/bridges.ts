@@ -244,8 +244,9 @@ function citationsOf({ citations }: SourceBridgeDeps): NonNullable<SourceBridgeD
 }
 
 /** A paper's PDF as base64, as deckPdf sends the built one; a paper without one rejects with the message the popup shows. */
-async function paperPdf(deps: SourceBridgeDeps, paperId: string): Promise<string> {
-  const { store } = citationsOf(deps);
+export async function paperPdf(deps: { library: SourceBridgeDeps["library"]; citations?: { store: Pick<CitationScopeStoreDeps, "paths"> } | undefined }, paperId: string): Promise<string> {
+  if (!deps.citations) { throw new Error("citation scopes are not available here"); }
+  const { store } = deps.citations;
   const paper = (await deps.library.listPapers()).find((listed) => listed.id === paperId);
   if (!paper) { throw new Error("The paper is not in the library."); }
   try {

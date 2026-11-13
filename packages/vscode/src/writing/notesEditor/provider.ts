@@ -130,8 +130,9 @@ async function openLink(deps: NotesEditorProviderDeps, href: string): Promise<vo
 }
 
 /** Applies the page's item edits one after another, each computed on the text the previous one left, and schedules the autosave; a failed edit is reported and the page gets the document's text back. */
-function createItemApplier(
-  document: vscode.TextDocument, logger: NotesEditorProviderDeps["logger"], autosave: ReturnType<typeof createAutosave>, post: Post,
+export function createItemApplier(
+  document: vscode.TextDocument, logger: NotesEditorProviderDeps["logger"], autosave: Pick<ReturnType<typeof createAutosave>, "schedule">,
+  post: (message: Extract<NotesEditorInbound, { type: "update" }>) => void,
 ): (message: Extract<NotesEditorOutbound, { type: "save" | "create" }>) => void {
   let edits: Promise<unknown> = Promise.resolve();
   return (message) => {

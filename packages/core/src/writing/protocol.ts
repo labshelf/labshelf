@@ -3,6 +3,7 @@ import { isBoolean, isNumber, isOneOf, isRecord, isString } from "../guards/inde
 import type { WrapKind } from "./snippets.js";
 import type { SourceUpdate } from "./authority.js";
 import type { FileSuggestion, ReviewMode } from "../collab/index.js";
+import { isConsultReply, isConsultRequest, type ConsultRef, type ConsultReply, type ConsultRequest } from "./consult/consultRequests.js";
 import { parseTypingHelpers, type TypingHelpers } from "./typing/helpers.js";
 import { parseSelectionPopupMessage, type SelectionPopupPrefs } from "./selectionPopup/prefs.js";
 import { OUTPUT_REQUEST_PARAMS, type OutputRequestMethod } from "./outputRequests.js";
@@ -389,4 +390,71 @@ export function parseSourceEditorInbound(value: unknown): SourceEditorInbound | 
 /** @returns the message as built from validated fields, or undefined when any part of it is invalid */
 export function parseSourceEditorOutbound(value: unknown): SourceEditorOutbound | undefined {
   return parseWith(value, parseOutboundBody);
+}
+
+/** The consult window's messages to its host, beside the editor's own (like projectSearch): requests, a file's open, a window's document messages under its key and its release. */
+export type ConsultOutbound = { type: "consult"; id: number; request: ConsultRequest } | { type: "consultFile"; id: number; key: string; ref: ConsultRef } | { type: "consultDoc"; key: string; message: ConsultDocOutbound } | { type: "consultRelease"; key: string }
+
+/** What a consult window's editable file sends: a text file's pushes and save, a qmd note's item edits. */
+export type ConsultDocOutbound = { type: "push"; version: number; updates: unknown[] } | { type: "save" } | { type: "saveItem"; itemId: string; body: string } | { type: "createItem"; itemId: string; body: string }
+
+/** The host's answers to a consult window: request replies, a file's init (or why it did not open) and the window's document messages. */
+export type ConsultInbound = { type: "consultReply"; id: number; reply: ConsultReply } | { type: "consultFileReply"; id: number; key: string; file: ConsultFileInit | { error: string } } | { type: "consultDoc"; key: string; message: ConsultDocInbound }
+
+/** A consult window's file: a text file as one more client of its authority (LF text), or a qmd note's whole text. */
+export type ConsultFileInit = { kind: "text"; path: string; text: string; lineBreak: "\n" | "\r\n"; version: number; dirty: boolean } | { kind: "qmd"; path: string; text: string }
+
+export type ConsultDocInbound = Extract<SourceEditorInbound, { type: "updates" | "resync" | "dirty" }> | { type: "update"; text: string }
+
+const isConsultRef = (value: unknown): value is ConsultRef => isConsultRequest({ kind: "open", ref: value });
+
+function isConsultDocOutbound(value: unknown): value is ConsultDocOutbound {
+  if (!isRecord(value)) { return false; }
+  switch (value["type"]) {
+    case "push": return isNumber(value["version"]) && Array.isArray(value["updates"]);
+    case "save": return true;
+    case "saveItem":
+    case "createItem": return isString(value["itemId"]) && isString(value["body"]);
+    default: return false;
+  }
+}
+
+function isConsultDocInbound(value: unknown): value is ConsultDocInbound {
+  if (!isRecord(value)) { return false; }
+  switch (value["type"]) {
+    case "updates": return isNumber(value["version"]) && Array.isArray(value["updates"]);
+    case "resync": return isString(value["text"]) && isNumber(value["version"]);
+    case "dirty": return isBoolean(value["dirty"]);
+    case "update": return isString(value["text"]);
+    default: return false;
+  }
+}
+
+function isConsultFileInit(value: unknown): value is ConsultFileInit | { error: string } {
+  if (!isRecord(value)) { return false; }
+  if (value["kind"] === undefined) { return isString(value["error"]); }
+  if (!isString(value["path"]) || !isString(value["text"])) { return false; }
+  if (value["kind"] === "qmd") { return true; }
+  return value["kind"] === "text" && (value["lineBreak"] === "\n" || value["lineBreak"] === "\r\n") && isNumber(value["version"]) && isBoolean(value["dirty"]);
+}
+
+export function isConsultOutbound(value: unknown): value is ConsultOutbound {
+  if (!isRecord(value)) { return false; }
+  switch (value["type"]) {
+    case "consult": return isNumber(value["id"]) && isConsultRequest(value["request"]);
+    case "consultFile": return isNumber(value["id"]) && isString(value["key"]) && isConsultRef(value["ref"]);
+    case "consultDoc": return isString(value["key"]) && isConsultDocOutbound(value["message"]);
+    case "consultRelease": return isString(value["key"]);
+    default: return false;
+  }
+}
+
+export function isConsultInbound(value: unknown): value is ConsultInbound {
+  if (!isRecord(value)) { return false; }
+  switch (value["type"]) {
+    case "consultReply": return isNumber(value["id"]) && isConsultReply(value["reply"]);
+    case "consultFileReply": return isNumber(value["id"]) && isString(value["key"]) && isConsultFileInit(value["file"]);
+    case "consultDoc": return isString(value["key"]) && isConsultDocInbound(value["message"]);
+    default: return false;
+  }
 }
