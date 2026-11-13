@@ -7,6 +7,7 @@ import type { ILogger } from "@labshelf/core";
 import { PaperImporter, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, pdfFileExists, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
 import { addTextLayerJobs } from "../command/index.js";
 import type { ActiveServices } from "../command/index.js";
+import { createDocumentPaperNotesPort } from "../localSync/index.js";
 import { type HostAdapters } from "./hostAdapters.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
 
@@ -35,10 +36,9 @@ function createSidecarStores(root: vscode.Uri, adapters: HostAdapters, store: Li
   const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(layout(), logger), { logger });
   const readerThemeStore = new ReaderThemeStore(adapters.createReaderThemesPort(layout()));
   const editorPrefsStore = new EditorPrefsStore(adapters.createEditorPrefsPort(layout()), logger);
-  const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort({
-    notesPath: createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join),
-    tmpDir: () => layout().tmpDir(),
-  }, logger), { logger });
+  const notesPath = createPaperNotesLocator((id) => store.paper(id)?.record.path, adapters.paths.join);
+  const notesPort = adapters.createPaperNotesPort({ notesPath, tmpDir: () => layout().tmpDir() }, logger);
+  const paperNotesStore = new PaperNotesStore(createDocumentPaperNotesPort(notesPort, notesPath, adapters.uriOf), { logger });
   return { paperDataStore, readerThemeStore, editorPrefsStore, paperNotesStore };
 }
 

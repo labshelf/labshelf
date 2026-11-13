@@ -1,20 +1,10 @@
 // Deck editor document sync: each page gesture becomes one WorkspaceEdit over deck.html and theme.css, its echo is swallowed and any other change of either file goes back to the page as an update.
 import * as vscode from "vscode";
 
+import { createAutosave, minimalReplace } from "../../localSync/index.js";
 import type { DeckHostMessage } from "./deckMessages.js";
 
 export interface DeckSync { applyFromPage(message: { deck: string; theme?: string; baseVersion: number }): Promise<boolean>; dispose(): void }
-
-/** The single replace that turns before into after: the longest common prefix, then the longest common suffix not overlapping it, in before's UTF-16 offsets; null when equal. */
-export function minimalReplace(before: string, after: string): { from: number; to: number; insert: string } | null {
-  if (before === after) return null;
-  const shorter = Math.min(before.length, after.length);
-  let prefix = 0;
-  while (prefix < shorter && before.charCodeAt(prefix) === after.charCodeAt(prefix)) prefix++;
-  let suffix = 0;
-  while (suffix < shorter - prefix && before.charCodeAt(before.length - 1 - suffix) === after.charCodeAt(after.length - 1 - suffix)) suffix++;
-  return { from: prefix, to: before.length - suffix, insert: after.slice(prefix, after.length - suffix) };
-}
 
 /** The theme document, or undefined when theme.css does not exist. */
 async function openTheme(themeUri: vscode.Uri): Promise<vscode.TextDocument | undefined> {
@@ -85,27 +75,33 @@ async function buildPageEdit(
   return { edit, deckChanged, themeChanged };
 }
 
+/** Calls onChange for every change of one of the files that is not the echo of the sync's own edit. */
+function onOutsideChange(uris: readonly vscode.Uri[], echoes: ReturnType<typeof createEchoTracker>, onChange: () => void): vscode.Disposable {
+  return vscode.workspace.onDidChangeTextDocument((event) => {
+    if (event.contentChanges.length === 0) return;
+    const { uri } = event.document;
+    if (!uris.some((watched) => sameUri(uri, watched))) return;
+    if (echoes.isEcho(uri, event.document.getText())) return;
+    onChange();
+  });
+}
+
 export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, post: (message: DeckHostMessage) => void): DeckSync {
   let disposed = false;
   const echoes = createEchoTracker();
   /** After the sync's own deck edit the page keeps its base version while the document moved on: docVersion stands for pageVersion. */
   let alias: { docVersion: number; pageVersion: number } | undefined;
   const enqueue = createQueue();
+  // A page edit is saved 300 ms after the last one: deck.html, and theme.css when the edit touched it, each only if still dirty.
+  const autosave = createAutosave();
   const sendUpdate = async (): Promise<void> => {
     const theme = await readThemeText(themeUri);
     if (disposed) return;
     alias = undefined;
     post({ type: "update", deck: deck.getText(), theme, version: deck.version });
   };
-  const postUpdate = (): Promise<void> => enqueue(sendUpdate);
 
-  const listener = vscode.workspace.onDidChangeTextDocument((event) => {
-    if (disposed || event.contentChanges.length === 0) return;
-    const { uri } = event.document;
-    if (!sameUri(uri, deck.uri) && !sameUri(uri, themeUri)) return;
-    if (echoes.isEcho(uri, event.document.getText())) return;
-    void postUpdate();
-  });
+  const listener = onOutsideChange([deck.uri, themeUri], echoes, () => { if (!disposed) void enqueue(sendUpdate); });
 
   const isCurrent = (baseVersion: number): boolean =>
     baseVersion === deck.version || (alias !== undefined && alias.pageVersion === baseVersion && alias.docVersion === deck.version);
@@ -122,7 +118,11 @@ export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, 
     const applied = await vscode.workspace.applyEdit(edit);
     if (!applied) { echoes.clear(); return false; }
     if (deckChanged) alias = { docVersion: deck.version, pageVersion: message.baseVersion };
-    if (!disposed) post({ type: "dirty", dirty: true });
+    if (!disposed) {
+      post({ type: "dirty", dirty: true });
+      if (deckChanged) autosave.schedule(deck);
+      if (themeChanged) void openTheme(themeUri).then((theme) => { if (theme && !disposed) autosave.schedule(theme); });
+    }
     return true;
   };
 
@@ -130,6 +130,7 @@ export function createDeckSync(deck: vscode.TextDocument, themeUri: vscode.Uri, 
     applyFromPage: (message) => enqueue(() => apply(message)),
     dispose(): void {
       disposed = true;
+      autosave.dispose();
       listener.dispose();
       echoes.clear();
     },
