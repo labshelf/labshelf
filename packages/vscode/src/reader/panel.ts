@@ -7,6 +7,8 @@ import {
   ReaderHostController,
   answerNoteFileRequest,
   createPaperFiles,
+  type ConsultInbound,
+  type ConsultOutbound,
   type ExportAnnotationsPorts,
   type HostToWebview,
   type ILogger,
@@ -119,6 +121,8 @@ export interface ReaderPanelDeps {
   extractEquation?: NonNullable<ReaderHostPorts["extractEquation"]>;
   /** The library's papers for the notes' From paper…; absent where PDF regions cannot be rendered (the web), and the reader hides it. */
   paperObjects?: NonNullable<ReaderHostPorts["paperObjects"]>;
+  /** Builds the panel's consult port over the panel's own post; absent where the reader offers no Consult (previews, version compare, the web). The panel disposes it when it closes. */
+  consult?: (post: (message: ConsultInbound) => void) => { handle(message: ConsultOutbound): Promise<void>; dispose(): void };
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -158,6 +162,8 @@ export class ReaderPanel {
   private _disposed = false;
   private _closed = false;
   private _closeOut: () => void = () => {};
+  /** This panel's consult port, released in the close-out; absent without a consult factory. */
+  private readonly _consult: ReturnType<NonNullable<ReaderPanelDeps["consult"]>> | undefined;
 
   /** Drives the reader of this panel: page jumps, reloads, build status and revealed points. */
   readonly controller: ReaderHostController;
@@ -219,6 +225,8 @@ export class ReaderPanel {
   private constructor(panel: vscode.WebviewPanel, deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null) {
     const { paper } = source;
     this._panel = panel;
+    this._consult = deps.consult?.((message) => this._post(message));
+    const consult = this._consult;
     this.controller = new ReaderHostController({
       paper,
       store: source.store,
@@ -238,6 +246,7 @@ export class ReaderPanel {
       ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
       ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
       ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
+      ...(consult ? { consult: { handle: (message: ConsultOutbound) => consult.handle(message) } } : {}),
       ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
@@ -312,6 +321,7 @@ export class ReaderPanel {
       if (this._closed) { return; }
       this._closed = true;
       source.onClosed?.();
+      this._consult?.dispose();
       openPanels.delete(source.key);
       if (ReaderPanel.activePanel === this) { ReaderPanel.activePanel = undefined; }
     };

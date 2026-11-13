@@ -22,7 +22,9 @@ import type { ActiveSource } from "../writing/index.js";
 import type { WritingProjects } from "../writing/projects/index.js";
 import { registerSourceEditor, type EditorPrefsHost } from "../writing/sourceEditor/index.js";
 import type { SourceEditorProviderDeps } from "../writing/sourceEditor/index.js";
-import type { DiskMerge } from "../localSync/index.js";
+import { createAutosave, type DiskMerge } from "../localSync/index.js";
+import { createConsultFiles, createVscodeConsultIo } from "../consult/index.js";
+import { sourceAuthorities } from "../writing/sourceEditor/authorities.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {
@@ -176,7 +178,19 @@ function readerPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): Par
     ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
     ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
     ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
+    consult: (post) => readerConsultOf(deps, services, post),
   };
+}
+
+/** One reader panel's consult: the open library's papers and the writing projects answer it, its files are clients of the shared authorities. The reader has no project, so no code is listed and Browse… is not offered. */
+function readerConsultOf(deps: PanelCommandsDeps, services: ActiveServices, post: Parameters<typeof createConsultFiles>[0]["post"]): ReturnType<typeof createConsultFiles> {
+  const library = { listPapers: () => services.paperService.listPapers() };
+  const io = createVscodeConsultIo({
+    library, projects: deps.projects, highlightsOf: (paperId) => services.paperDataStore.getAnnotations(paperId), paperNotes: deps.sourceEditor.paperNotes,
+  });
+  const autosave = createAutosave();
+  const files = createConsultFiles({ post, io, projects: deps.projects, library, authorities: sourceAuthorities, autosave, logger: services.logger });
+  return { handle: (message) => files.handle(message), dispose() { files.dispose(); autosave.dispose(); } };
 }
 
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
