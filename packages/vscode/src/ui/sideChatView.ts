@@ -1,4 +1,4 @@
-// Builds the page of a chat webview view in the LabShelf Details side bar and wires its ready handshake; Research chat and Project chat share it.
+// Builds the page of a chat webview view in the LabShelf Chat side bar and wires its ready handshake; Research chat and Project chat share it.
 import * as vscode from "vscode";
 import { createNonce } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "./bundleMissing.js";

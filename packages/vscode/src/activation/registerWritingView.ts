@@ -1,6 +1,5 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
 import * as vscode from "vscode";
-import type { SelectionSources } from "../libraryUi/index.js";
 
 import {
   buildRootOf, CheckCounts, formatError, createProjectNotesStore, createPublishedVersionFinder, type ILogger, type ProjectNotesStore, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
@@ -46,7 +45,7 @@ export interface WritingViewResult {
   projectsSource: SidebarProjectsSource;
   /** The library sidebar renders the open project's Files, Outline and Checklist from it. */
   projectTrees: ProjectTreeMirror;
-  /** The Details view serves the All projects protocol from the same port. */
+  /** The Spaces view reads the same All projects port. */
   projectLibrary: () => ProjectLibraryPort;
   /** The window's one notes store, so Send to and Checklist ticks queue on the same note file. */
   notes: ProjectNotesStore;
@@ -292,7 +291,7 @@ function createCitationSections(context: vscode.ExtensionContext, projects: Writ
 
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
-  registerPlatformWriting: RegisterPlatformWriting, sources: Pick<SelectionSources, "projectSelected" | "projectsActivated">,
+  registerPlatformWriting: RegisterPlatformWriting,
 ): WritingViewResult {
   const host = createWritingHost(controller);
   const logger = openLibraryLogger(controller);
@@ -331,7 +330,6 @@ export function registerWritingView(
   const projectLibrary = registerAllProjects({
     context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,
     onDidChangeRootBuild: previews.onDidChangeRootBuild, listPapers, pdfjs: adapters.pdfjs, recompile,
-    selection: { onSelect: sources.projectSelected, onActivate: sources.projectsActivated },
   });
   registerEditingSupport(parts);
   void projects.reload();

@@ -887,7 +887,7 @@
       "secondarySidebar": [
         {
           "id": "labshelfDetails",
-          "title": "LabShelf Details",
+          "title": "LabShelf Chat",
           "icon": "media/labshelf.svg"
         }
       ]
@@ -904,11 +904,6 @@
           "id": "labshelf.projectChat",
           "name": "Project Chat",
           "when": "labshelf.projectChat.available"
-        },
-        {
-          "id": "labshelf.details",
-          "name": "Details",
-          "type": "webview"
         }
       ],
       "labshelfSearch": [

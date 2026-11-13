@@ -398,15 +398,6 @@ describe('ListWebviewPanel — reveal both ways', () => {
     await fresh.fire({ type: 'ready' });
     expect(fresh.posted().map((m) => m.type)).not.toContain('reveal');
   });
-
-  it('reports every selection change, including empty and multiple, to onDidChangeSelection', async () => {
-    const onDidChangeSelection = jest.fn();
-    const h = open(undefined, { onDidChangeSelection });
-    await h.fire({ type: 'ready' });
-    await h.fire({ type: 'paper.selected', ids: ['p1', 'p2'] });
-    await h.fire({ type: 'paper.selected', ids: [] });
-    expect(onDidChangeSelection.mock.calls).toEqual([[['p1', 'p2']], [[]]]);
-  });
 });
 
 describe('listPanelHtml (shell)', () => {
