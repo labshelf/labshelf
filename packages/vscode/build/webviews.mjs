@@ -15,6 +15,8 @@ const BUNDLES = {
   "search/search": "src/writing/search/webview/searchEntry.ts",
   "history/history": "src/writing/history/webview/historyEntry.ts",
   "sourceEditor/sourceEditor": "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
+  // An article page's reader, imported lazily by the editor page; an entry of its own so its stylesheet has a fixed name the page links (inlineReader.ts).
+  "sourceEditor/inlineReader": "src/writing/sourceEditor/webview/inlineReader.ts",
   "notesEditor/notesEditor": "src/writing/notesEditor/webview/notesEditorEntry.ts",
   "deckEditor/deckEditor": "src/writing/deckEditor/webview/deckEditorEntry.ts",
   "newDeck/newDeck": "src/writing/deckEditor/webview/newDeckEntry.ts",

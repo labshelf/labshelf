@@ -10,6 +10,7 @@ import { findElement, renderElement } from "../../ui/dom/index.js";
 import type { InTextReference } from "../inTextReferences.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { renderIcon } from "../../ui/index.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 // Opens one hover popup for a PDF link annotation or a text reference under the pointer.
 // Owns the timers, targets and the `attempt` token that drops stale async work.
@@ -122,7 +123,7 @@ export class HoverPreview {
     this.popup.onLeave(() => this.scheduleClose());
     ctx.container.addEventListener("scroll", () => this.close(), { passive: true });
     ctx.eventBus.on("scalechanging", () => this.close());
-    document.addEventListener("keydown", () => this.close());
+    document.addEventListener("keydown", (e) => { if (isReaderKeyEvent(e)) { this.close(); } });
     document.addEventListener("mousedown", (e) => { if (!this.popup.contains(e.target as Node)) { this.close(); } });
   }
 

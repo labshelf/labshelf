@@ -8,6 +8,7 @@ import { isPresetScale } from "../viewNavigation.js";
 import type { ReaderAction } from "../keymap.js";
 import type { Sidebar } from "./sidebar.js";
 import { closePopover, isPopoverOpen } from "./elements.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 /**
  * Restores the stored reading position once both the laid-out pages and the host's init message are in, whichever arrives second.
@@ -45,7 +46,13 @@ export class ReadingPositionRestore {
     for (const type of ["wheel", "touchmove", "pointerdown"] as const) {
       target.ctx.container.addEventListener(type, markMoved, { passive: true, once: true });
     }
-    document.addEventListener("keydown", markMoved, { passive: true, once: true });
+    // Scoped, keys typed in the host page do not count, so the listener removes itself only after a reader key.
+    const markMovedByKey = (e: KeyboardEvent): void => {
+      if (!isReaderKeyEvent(e)) { return; }
+      markMoved();
+      document.removeEventListener("keydown", markMovedByKey);
+    };
+    document.addEventListener("keydown", markMovedByKey, { passive: true });
     this.onInit = (msg) => this.applyInit(target, msg);
     target.ctx.eventBus.on("pagesinit", () => this.onPagesInit(target));
   }

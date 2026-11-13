@@ -21,7 +21,7 @@ import {
 } from "../writing/projects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
-import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
+import { BuildPreviews, FocusFollower, provideInlinePreviews, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
 import { readActiveProjectSource } from "../writing/preview/index.js";
 import { createActiveSource, type ActiveSource } from "../writing/index.js";
 import { createKitsHandler, deckWorkspaceBuilds, provideDeckWorkspace } from "../writing/sourceEditor/index.js";
@@ -174,10 +174,12 @@ function registerBuildAndPreviewCommands(
     data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: rootOf,
     recompile,
-    projects, checkCounts: counts, includeOnly, activeSource,
+    projects, checkCounts: counts, includeOnly, activeSource, state: context.globalState,
     setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
     fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder, projects.paths),
   });
+  // The LabShelf editor's article tabs show this preview inside their own page.
+  context.subscriptions.push(provideInlinePreviews(previews));
   const session = registerProjectSession({ context, host, projects, previews, activeSource });
   const diagnostics = new BuildProblems();
   context.subscriptions.push(diagnostics);

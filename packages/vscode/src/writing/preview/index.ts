@@ -1,6 +1,6 @@
 /** Exports what the rest of the extension uses of the build preview: the per-project reader previews and their commands, the lookup of a project's built PDF and the build-root readers. */
 export { readActiveProjectSource, readRawLogFile } from "./buildRoots.js";
 export type { CitationFixDeps } from "./citationFixes.js";
-export { BuildPreviews, FocusFollower, previewVisibility, readBuiltPdf, registerShowPreview } from "./panel.js";
+export { BuildPreviews, FocusFollower, currentInlinePreviews, previewVisibility, provideInlinePreviews, readBuiltPdf, registerShowPreview, type InlinePreviewEndpoint, type InlinePreviewHost, type InlinePreviewStart } from "./panel.js";
 export type { BodyPagesCount } from "./ports.js";
 export { registerShowInPreview } from "./synctex.js";

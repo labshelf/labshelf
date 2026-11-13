@@ -38,3 +38,10 @@ body,
 .source-editor-card .cm-scroller {
   font-family: var(--ls-code-font);
 }
+
+/* An article's page: the split (inlinePreview.ts) takes the root's place around the card. */
+#root > .ls-source-split {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}

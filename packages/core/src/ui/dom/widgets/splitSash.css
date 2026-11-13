@@ -1,0 +1,5 @@
+/* The library's pane sash between two side-by-side panes (attachSplitSash, the deck's divider): three dots, grey, blue only under the pointer or while dragging. */
+.ls-split-sash { display: flex; flex: 0 0 var(--ls-space-2); align-items: center; justify-content: center; cursor: col-resize; touch-action: none; color: var(--ls-desc); }
+.ls-split-sash:hover, .ls-split-sash.dragging { color: var(--ls-focus); }
+.ls-split-sash .ls-sash-grip { display: flex; pointer-events: none; }
+.ls-split-sash .ls-sash-grip svg { width: var(--ls-space-3); height: var(--ls-space-6); transform: rotate(90deg) scale(2); }

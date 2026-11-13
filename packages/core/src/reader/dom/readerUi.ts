@@ -36,6 +36,7 @@ import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
 import { createConsult, type Consult, type ConsultSetup, type ManuscriptWindow } from "../../writing/consult/dom/createConsult.js";
 import { createReaderCitation } from "../../writing/citations/citeFromReader.js";
+import { readerLayer } from "./scope.js";
 
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
@@ -125,7 +126,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
  * @returns the consult, which the caller disposes when the page goes away.
  */
 export function mountReaderConsult(ctx: ReaderContext, ui: Pick<ReaderUi, "toolbar" | "consult">, setup: ConsultSetup): Consult {
-  const consult = createConsult({ ...setup, root: document.body, onError: (error) => console.warn("LabShelf reader: consult failed", error) });
+  const consult = createConsult({ ...setup, root: readerLayer(), onError: (error) => console.warn("LabShelf reader: consult failed", error) });
   ui.toolbar.setConsult({ choose: () => consult.choose(), windows: consult.windows });
   ui.consult.current = consult;
   const citeKey = ctx.boot.citeKey;

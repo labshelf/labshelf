@@ -4,8 +4,6 @@
  */
 import * as vscode from "vscode";
 import {
-  ReaderHostController,
-  answerNoteFileRequest,
   createPaperFiles,
   type ConsultInbound,
   type ConsultOutbound,
@@ -13,7 +11,6 @@ import {
   type HostToWebview,
   type ILogger,
   type NoteFileIo,
-  type NoteFileRequest,
   type NoticeKind,
   type PaperNotesStore,
   type PaperRecord,
@@ -30,8 +27,9 @@ import {
 } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
-import { followPaperNotes, followReaderSettings, getReaderPrefs, getReaderViewColumn } from "./followNotes.js";
-import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
+import { createReaderEndpoint, type ReaderEndpoint } from "./endpoint.js";
+import { followPaperNotes, getReaderPrefs, getReaderViewColumn } from "./followNotes.js";
+import { renderReaderShell, readReaderBundleDir, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -159,11 +157,11 @@ export class ReaderPanel {
   private _disposed = false;
   private _closed = false;
   private _closeOut: () => void = () => {};
-  /** This panel's consult port, released in the close-out; absent without a consult factory. */
-  private readonly _consult: ReturnType<NonNullable<ReaderPanelDeps["consult"]>> | undefined;
+  /** This panel's reader host side (controller, settings, consult port), released in the close-out. */
+  private readonly _endpoint: ReaderEndpoint;
 
   /** Drives the reader of this panel: page jumps, reloads, build status and revealed points. */
-  readonly controller: ReaderHostController;
+  readonly controller: ReaderEndpoint["controller"];
 
   /**
    * Clears the map of open panels — intended for use in tests only.
@@ -222,37 +220,12 @@ export class ReaderPanel {
   private constructor(panel: vscode.WebviewPanel, deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null) {
     const { paper } = source;
     this._panel = panel;
-    this._consult = deps.consult?.((message) => this._post(message));
-    const consult = this._consult;
-    this.controller = new ReaderHostController({
-      paper,
-      store: source.store,
-      // The details live in the list tab's right pane, so the button shows the paper there.
-      toggleDetails: async (paperId) => { await vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
+    this._endpoint = createReaderEndpoint(deps, source, {
       post: (msg) => this._post(msg),
-      getPrefs: getReaderPrefs,
-      autoTheme: readAutoReaderTheme,
-      ...createVsCodeOutputPorts(paper),
-      ...(deps.cite ? { cite: (request: CiteRequest) => deps.cite!(paper, request) } : {}),
-      ...(source.notes ? { notes: source.notes } : {}),
-      ...(source.themes ? { themes: source.themes } : {}),
-      ...(deps.runCell ? { runCell: deps.runCell } : {}),
-      ...(deps.runCell?.runMath ? { runMath: deps.runCell.runMath } : {}),
-      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
-      ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
-      ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
-      ...(consult ? { consult: { handle: (message: ConsultOutbound) => consult.handle(message) } } : {}),
-      ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
-      logger: deps.logger,
-      sidecarChanged: (change) => {
-        // A custom theme saved here reaches every other open reader; this one already has the list.
-        if (change.kind === "customThemes") {
-          for (const other of openPanels.values()) { if (other !== this) { other.controller.onCustomThemesChange(change.themes); } }
-        }
-        source.sidecarChanged?.(change);
-      },
-      ...(source.preview ? { preview: source.preview } : {}),
-    }, source.page !== undefined ? { page: source.page } : {});
+      asWebviewUri: (uri) => this._panel.webview.asWebviewUri(uri),
+      setTitle: (title) => { this._panel.title = title; },
+    });
+    this.controller = this._endpoint.controller;
     openPanels.set(source.key, this);
     if (panel.active) { ReaderPanel.activePanel = this; }
 
@@ -286,8 +259,7 @@ export class ReaderPanel {
    * Shows another PDF in this panel; it must lie under the `rootDir` the panel was opened with.
    */
   showDocument(pdf: vscode.Uri, title: string): void {
-    this._panel.title = title;
-    this.controller.reloadDocument(this._panel.webview.asWebviewUri(pdf).toString());
+    this._endpoint.showDocument(pdf, title);
   }
 
   reveal(preserveFocus = false): void {
@@ -295,8 +267,6 @@ export class ReaderPanel {
   }
 
   private _subscribe(source: ReaderSource): void {
-    this._disposables.push(...followReaderSettings(this.controller));
-
     // The reader's notes follow the paper's notes.qmd, whichever editor changes it; refreshNotes is deduped.
     if (source.notes && !source.preview) {
       this._disposables.push(followPaperNotes(source.paper.path, () => void this.controller.refreshNotes()));
@@ -315,7 +285,7 @@ export class ReaderPanel {
       if (this._closed) { return; }
       this._closed = true;
       source.onClosed?.();
-      this._consult?.dispose();
+      this._endpoint.dispose();
       openPanels.delete(source.key);
       if (ReaderPanel.activePanel === this) { ReaderPanel.activePanel = undefined; }
     };

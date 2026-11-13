@@ -4,6 +4,7 @@ import { fitEmptyBox, snapBox, type PageRect } from "../textBoxPlacement.js";
 import { collectPageRects, showDraft } from "./noteBoxPlacement.js";
 import { beginPageDrag, trackPointer } from "./pageDrag.js";
 import type { ReaderContext } from "./readerSession.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 const MODE_CLASS = "rd-box-mode";
 /** Pointer travel in pixels below which a press counts as a click. */
@@ -19,7 +20,7 @@ export class BoxTool {
   constructor(private readonly ctx: ReaderContext) {
     ctx.container.addEventListener("pointerdown", (e) => this.pointerDown(e), true);
     document.addEventListener("keydown", (e) => {
-      if (this.on && e.key === "Escape") { this.setActive(false); }
+      if (this.on && e.key === "Escape" && isReaderKeyEvent(e)) { this.setActive(false); }
     }, true);
   }
 

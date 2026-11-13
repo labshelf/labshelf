@@ -6,6 +6,7 @@ import type { ReaderContext } from "./readerSession.js";
 import { renderElement, findElement } from "../../ui/dom/index.js";
 import { deriveReaderTheme, isLightColour, readerThemeCssVars } from "../../ui/tokens/index.js";
 import { deriveCheatsheetRows } from "../keymap.js";
+import { readerRoot } from "./scope.js";
 
 // Applies the selected colour preset to the PDF reader.
 
@@ -80,7 +81,7 @@ export class ThemeController {
     if (preference) { this.preference = preference; }
     if (!effective) { return; }
     this.effective = effective;
-    const root = document.documentElement;
+    const root = readerRoot();
     root.dataset["pdfTheme"] = effective;
     for (const name of this.inlineVars) { root.style.removeProperty(name); }
     this.inlineVars = [];

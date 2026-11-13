@@ -25,7 +25,7 @@ export function mountDeckShell(host: HTMLElement, parts: DeckShellParts): DeckSh
   const body = renderElement("div", { class: "dw-body" }, ...(parts.left ? [parts.left] : []));
   const root = renderElement("div", { class: "dw", "data-format": parts.format, "data-kind": parts.kind, "data-mode": "visual" }, parts.header, parts.insert, body, parts.status);
   if (parts.code) {
-    const divider = renderElement("div", { class: "dw-divider", role: "separator", "aria-orientation": "vertical", "aria-label": "Resize" });
+    const divider = renderElement("div", { class: "dw-divider ls-split-sash", role: "separator", "aria-orientation": "vertical", "aria-label": "Resize" });
     body.append(renderElement("div", { class: "dw-code" }, parts.code, divider));
     wireDivider(divider, body, root);
   }

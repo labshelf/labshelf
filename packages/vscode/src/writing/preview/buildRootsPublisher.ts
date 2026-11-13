@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { countBuildRootWords, createProjectSources, createPublishedVersionFinder, readPdfProblems, type BuildRootBuilds, type ProjectSynctex, type RegistryEnv } from "@labshelf/core";
-import type { ReaderPanel } from "../../reader/index.js";
+import type { ReaderEndpoint } from "../../reader/index.js";
 import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/index.js";
 import type { ReadyProject } from "../projects/index.js";
@@ -37,7 +37,8 @@ export class MeasureCache {
 
 /** The preview state of BuildPreviews that a publish reads. */
 export interface BuildRootsPublisherState {
-  panels: ReadonlyMap<string, ReaderPanel>;
+  /** The readers that show each project's preview: its panel or its article tabs' previews. */
+  readers: { folders(): Iterable<string>; of(folder: string): ReadonlyArray<{ setPreviewRoots(roots: Parameters<ReaderEndpoint["controller"]["setPreviewRoots"]>[0]): void }> };
   /** The root each project's open preview shows. */
   shown: ReadonlyMap<string, string>;
   builds: BuildRootBuilds;
@@ -71,7 +72,7 @@ export class BuildRootsPublisher implements vscode.Disposable {
 
   /** Sends the roots of every open preview again. */
   resendAll(): void {
-    for (const folder of this.state.panels.keys()) { this.resend(folder); }
+    for (const folder of this.state.readers.folders()) { this.resend(folder); }
   }
 
   /** Forgets what was measured of a root whose build finished. */
@@ -81,22 +82,21 @@ export class BuildRootsPublisher implements vscode.Disposable {
 
   // The project entry is read again because a reload can change its settings.
   resend(folder: string): void {
-    if (!this.state.panels.has(folder)) { return; }
+    if (this.state.readers.of(folder).length === 0) { return; }
     const entry = this.deps.projects.list().find((candidate) => candidate.kind === "ready" && candidate.folder === folder);
     if (entry?.kind === "ready") { void this.publish(entry); }
   }
 
   async publish(project: ReadyProject): Promise<void> {
-    const panel = this.state.panels.get(project.folder);
     const shown = this.state.shown.get(project.folder);
-    if (!panel || shown === undefined) { return; }
+    if (this.state.readers.of(project.folder).length === 0 || shown === undefined) { return; }
     const { paths, data, buildRootOf, checkCounts } = this.deps;
     const { builds } = this.state;
     const checks = checkCounts.get(project.folder);
     const logger = this.deps.host.current()?.logger;
     try {
       const focused = await readFocusedBuildRoot(paths, buildRootOf, project, this.deps.activeSource);
-      panel.controller.setPreviewRoots(await createPreviewBuildRootsMessage({
+      const roots = await createPreviewBuildRootsMessage({
         paths, data, project, focused, shown, built: builds.builtRoots(project.folder),
         problemsOf: (root) => builds.problemsOf(project.folder, root) ?? [],
         failed: (root) => builds.stateOf(project.folder, root)?.state === "failed",
@@ -105,7 +105,9 @@ export class BuildRootsPublisher implements vscode.Disposable {
         wordsOf: (root) => this.measures.get(project.folder, root, "words", () => countBuildRootWords(this.readerFor(project.folder), project.settings, root)),
         ...(checks !== undefined && { checks }),
         ...(logger && { logger }),
-      }));
+      });
+      // Read again: an article tab can attach or close while the roots are measured.
+      for (const reader of this.state.readers.of(project.folder)) { reader.setPreviewRoots(roots); }
     } catch (error) {
       void logger?.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, shown });
     }

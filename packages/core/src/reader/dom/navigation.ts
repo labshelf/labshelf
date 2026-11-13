@@ -10,6 +10,7 @@ import { ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveShortcut, type R
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED } from "./pdfLoader.js";
 import { isTextInput, deriveClampedNumber } from "./elements.js";
+import { isReaderKeyEvent } from "./scope.js";
 
 // Controls the PDF zoom within the visible reader viewport.
 
@@ -123,7 +124,7 @@ export class Keyboard {
   private lastRun: ActionStamp | null = null;
 
   constructor(private readonly ctx: ReaderContext, private readonly run: (action: ReaderAction) => void) {
-    document.addEventListener("keydown", (e) => this.onKeyDown(e));
+    document.addEventListener("keydown", (e) => { if (isReaderKeyEvent(e)) { this.onKeyDown(e); } });
     document.addEventListener("keyup", (e) => { if (this.held?.key === e.key) { this.stopScroll(); } });
     window.addEventListener("blur", () => this.stopScroll());
   }

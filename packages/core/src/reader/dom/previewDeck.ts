@@ -8,6 +8,7 @@ import { renderIcon } from "../../ui/index.js";
 import type { PreviewBuildRoot, PreviewDeck, WebviewToHost } from "../index.js";
 import { DOCUMENT_REPLACED } from "./pdfLoader.js";
 import type { ReaderContext } from "./readerSession.js";
+import { readerLayer, readerRoot } from "./scope.js";
 
 export interface PreviewDeckView {
   /** Switches the preview into the shown root's talk or poster mode, or back to a document. */
@@ -150,7 +151,7 @@ function showPoster(ctx: ReaderContext, dom: DeckDom, realSize: () => void): voi
           label: `${run.pt} pt: ${run.text.slice(0, 40)}`,
           onSelect: () => ctx.pdfViewer.scrollPageIntoView({ pageNumber: run.page, destArray: [null, { name: "XYZ" }, run.x, run.y, null] }),
         }));
-      showMenu(check, [{ label: `Text below ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }, "separator", ...items]);
+      showMenu(check, [{ label: `Text below ${thresholdPt} pt at print size`, disabled: true, onSelect: () => undefined }, "separator", ...items], { root: readerLayer() });
     };
   }).catch(() => undefined);
 }
@@ -165,7 +166,7 @@ export function mountPreviewDeck(ctx: ReaderContext, post: (msg: WebviewToHost) 
 
   const render = (): void => {
     const kind = deck?.kind;
-    document.documentElement.dataset["deck"] = kind ?? "";
+    readerRoot().dataset["deck"] = kind ?? "";
     dom.bar.hidden = kind === undefined;
     dom.strip.hidden = kind !== "talk";
     dom.notes.hidden = kind !== "talk";

@@ -31,12 +31,16 @@ import { createWebviewConsult } from "./consultPorts.js";
 import { createBuildFeed, mountWorkspaceInWebview } from "./deckWorkspacePorts.js";
 import { createHostDocument } from "./hostDocument.js";
 import { createHostPorts } from "./hostPorts.js";
+import { mountInlinePreview, withoutInlinePreview, type InlinePreviewPane } from "./inlinePreview.js";
+import { isArticleSource } from "../readerPane.js";
 
 type Init = Extract<SourceEditorInbound, { type: "init" }>;
 type DocumentMessage = Extract<SourceEditorInbound, { type: "updates" | "resync" | "dirty" }>;
 
 const vscodeApi = acquireVsCodeApi();
-const transport = createWebviewTransport<SourceEditorOutbound, object>(vscodeApi);
+const channel = createWebviewTransport<SourceEditorOutbound, object>(vscodeApi);
+// The article preview's pane and reader messages go to the pane alone, never to the editor's handlers.
+const transport = withoutInlinePreview(channel);
 const post = (message: SourceEditorOutbound): void => transport.post(message);
 
 /** The file's language, from its extension in init; the table is written in it. */
@@ -322,6 +326,19 @@ function followHostState(): void {
   });
 }
 
+/** An article's PDF preview beside the card; asked for once the editor's init says the file is an article. */
+let inlinePreview: InlinePreviewPane | undefined;
+
+function mountArticlePreview(card: HTMLElement): void {
+  if (inlinePreview) { return; }
+  inlinePreview = mountInlinePreview({
+    root: findElement("root"), card, api: vscodeApi,
+    start: async () => (await import("./inlineReader.js")).startInlineReader,
+    onError: (error) => logger.error("sourceEditor.webview", error, { action: "startInlinePreview" }),
+  });
+  channel.subscribe((raw) => { inlinePreview?.receive(raw); });
+}
+
 function start(): void {
   const card = document.createElement("div");
   card.className = "ls-card source-editor-card";
@@ -361,6 +378,8 @@ function start(): void {
         card.append(toolbar);
       }
       deliver ??= mount(message, card);
+      // Only an article in a project has the preview; the host asks the same (provider.ts).
+      if (message.projectId !== "" && isArticleSource(message.path, message.text)) { mountArticlePreview(card); }
     }
     else if (message.type === "updates" || message.type === "resync" || message.type === "dirty") { deliver?.(message); }
   });

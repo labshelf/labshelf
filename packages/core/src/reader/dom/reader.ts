@@ -18,6 +18,7 @@ import { attachCitationClicks, PreviewCitations } from "./citations.js";
 import { ChangeMarks } from "./findMarks.js";
 import { Keyboard, SourceSync } from "./navigation.js";
 import { findElement } from "../../ui/dom/index.js";
+import { setReaderScope } from "./scope.js";
 
 interface ReaderStartOptions {
   boot: ReaderStartupParams;
@@ -32,13 +33,20 @@ interface ReaderStartOptions {
   saveAiKey?: (provider: AiProvider, key: string) => Promise<void>;
   /** Resolves the host's consult once the UI is built (never in a build preview); undefined or a rejection leaves the toolbar without Consult. */
   consult?: () => Promise<ConsultSetup | undefined>;
+  /**
+   * The element the reader is mounted in when it shares the page with other content (it gets `rd-scope`); state classes,
+   * theme tokens and popovers go on it instead of <html> and <body>, and keys typed outside it are not the reader's.
+   * Absent, the reader owns the document.
+   */
+  scope?: HTMLElement;
 }
 
 /**
  * Builds the reader around the shell already in the document (READER_SHELL_BODY) and connects it to a host. Call once per document.
  * @returns resolves once the viewer is wired; on a load failure shows #error-msg and rejects so the host can log it.
  */
-export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, consult }: ReaderStartOptions): Promise<void> {
+export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, consult, scope }: ReaderStartOptions): Promise<void> {
+  setReaderScope(scope);
   installPolyfills();
   installTextLayerFocusGuard();
 
