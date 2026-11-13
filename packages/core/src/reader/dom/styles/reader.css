@@ -30,10 +30,14 @@ button { font: inherit; color: inherit; }
 #app { display: flex; height: 100%; }
 /* The page area is a card (ls-card values, ui/dom/base.css); with the sidebar open the resizer is the gutter. */
 #pdf-shell {
-  position: relative; flex: 1; min-width: 0; margin: var(--ls-card-margin, 6px); background: var(--ls-reader-bg);
+  position: relative; flex: 1; min-width: 0; margin: var(--ls-card-margin, 6px); background: var(--ls-reader-card, var(--ls-reader-bg));
   border: 1px solid var(--ls-reader-border); border-radius: var(--ls-card-radius, 8px); overflow: hidden;
 }
 #sidebar-resizer:not([hidden]) + #pdf-shell { margin-left: 0; }
+/* A theme that follows the host's (auto) takes the host's surfaces, as the LabShelf editor does: the side bar's tone behind the card (the tone of
+   All papers) and the editor's inside it, around the pages. The pages keep the preset's colours. */
+[data-pdf-theme-follows="host"] { --ls-reader-bg: var(--ls-sidebar-bg, var(--ls-bg)); --ls-reader-card: var(--ls-bg); }
+[data-pdf-theme-follows="host"] #viewerContainer { background: var(--ls-reader-card); }
 #viewerContainer {
   position: absolute; inset: 0; overflow: auto; outline: none;
   /* Room for the overlay toolbar so page one is never covered at scrollTop 0. */

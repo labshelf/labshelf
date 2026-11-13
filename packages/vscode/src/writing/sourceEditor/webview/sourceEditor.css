@@ -7,6 +7,12 @@ body,
   padding: 0;
 }
 
+/* Behind the card, the side bar's tone (the tone of All papers and of the PDF reader's desk); the card keeps the editor's. */
+body,
+#root {
+  background: var(--ls-sidebar-bg, var(--ls-bg));
+}
+
 #root {
   box-sizing: border-box;
   display: flex;

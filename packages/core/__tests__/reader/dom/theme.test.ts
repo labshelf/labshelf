@@ -6,6 +6,22 @@ import { ThemeController } from "../../../src/reader/dom/theme";
 import { findPagePreset } from "../../../src/reader/index";
 
 describe("ThemeController", () => {
+  it("takes the host's surfaces while the theme follows the host's, and the page colour around the pages otherwise", () => {
+    const container = document.createElement("div");
+    const theme = new ThemeController(container, "auto", "dark");
+    expect(document.documentElement.dataset["pdfThemeFollows"]).toBe("host");
+    expect(container.style.background).toBe("");
+
+    theme.apply("sepia", "sepia");
+    expect(document.documentElement.dataset["pdfThemeFollows"]).toBeUndefined();
+    expect(container.style.background).not.toBe("");
+
+    theme.apply("auto", "light");
+    expect(document.documentElement.dataset["pdfThemeFollows"]).toBe("host");
+    theme.apply("custom:ink", "dark", { id: "ink", name: "Ink", page: "#101010", ink: "#eeeeee" } as never);
+    expect(document.documentElement.dataset["pdfThemeFollows"]).toBeUndefined();
+  });
+
   it("tells effective-theme listeners about every applied theme, init included", () => {
     const theme = new ThemeController(document.createElement("div"), "auto", "dark");
     const seen: string[] = [];
