@@ -11,7 +11,7 @@ import type { LatexEngine } from "../writing/project/index.js";
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
 export const PROTOCOL_VERSION = 11;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
-export const HELPER_VERSION = "0.5.0";
+export const HELPER_VERSION = "0.6.0";
 
 // CONTRACT: documents/contracts/helper.md#messages
 export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024 * 1024;
