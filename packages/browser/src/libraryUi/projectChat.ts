@@ -58,19 +58,32 @@ function chatOptions(project: ReadyProject, canWrite: SpaceProjectChat["canWrite
   };
 }
 
+/** Serves the project's chat to the pane over a loopback and shows it there; returns the stop function. */
+function serveChat(chat: ReturnType<typeof mountProjectChat>, project: ReadyProject, canWrite: boolean, on: Bound): () => void {
+  const { ui, host } = createLoopbackTransport<ProjectChatToHost, HostToProjectChat>();
+  const stop = serveProjectChat({ ...chatOptions(project, canWrite, on), end: host });
+  chat.setProject(projectTitle(project), createRemoteProjectChat(ui, { onError: (message) => { showToast(message, "error"); } }));
+  return stop;
+}
+
+/** The chat store and presence of the page's sharing, refreshed when a share connects here or in another tab (which changes whether this tab may write the chat). */
+function bindChatDeps(deps: PageProjectChatDeps, refresh: () => void): Bound {
+  const presence = createProjectChatPresencePort({
+    presenceOf: (shareId) => deps.sharing.shares.active(shareId)?.presence,
+    onConnectionsChange: (listener) => deps.sharing.shares.onChange(listener),
+    self: () => deps.sharing.shares.name(),
+  });
+  const store = createProjectChatStore({ fs: deps.fs, logger: deps.logger, now: () => new Date().toISOString() });
+  const stops = [deps.sharing.onProjectsChange(refresh), deps.sharing.shares.onChange(refresh)];
+  return { deps, store, presence, stopProjects: () => stops.forEach((stop) => stop()) };
+}
+
 export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
   const chat = mountProjectChat(pane, { source: null, projectTitle: null });
   const listeners = new Set<(available: boolean) => void>();
   let projectId: string | undefined;
   let bound: Bound | undefined;
   let served: { key: string; stop(): void } = { key: "", stop: () => {} };
-
-  const serve = (project: ReadyProject, canWrite: boolean, on: Bound): (() => void) => {
-    const { ui, host } = createLoopbackTransport<ProjectChatToHost, HostToProjectChat>();
-    const stop = serveProjectChat({ ...chatOptions(project, canWrite, on), end: host });
-    chat.setProject(projectTitle(project), createRemoteProjectChat(ui, { onError: (message) => { showToast(message, "error"); } }));
-    return stop;
-  };
 
   const refresh = (): void => {
     const project = bound && projectId !== undefined ? findSharedProject(bound.deps.sharing, projectId) : undefined;
@@ -80,7 +93,7 @@ export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
     const had = served.key !== "";
     served.stop();
     served = { key, stop: () => {} };
-    if (project && bound) served.stop = serve(project, canWrite, bound);
+    if (project && bound) served.stop = serveChat(chat, project, canWrite, bound);
     else chat.setProject(null, null);
     if (had !== (key !== "")) for (const listener of [...listeners]) listener(key !== "");
   };
@@ -93,15 +106,7 @@ export function createPageProjectChat(pane: HTMLElement): PageProjectChat {
       return on && project ? chatOptions(project, () => holdsShare(on, project), on) : undefined;
     },
     bind(deps) {
-      const presence = createProjectChatPresencePort({
-        presenceOf: (shareId) => deps.sharing.shares.active(shareId)?.presence,
-        onConnectionsChange: (listener) => deps.sharing.shares.onChange(listener),
-        self: () => deps.sharing.shares.name(),
-      });
-      const store = createProjectChatStore({ fs: deps.fs, logger: deps.logger, now: () => new Date().toISOString() });
-      // A share connecting here or in another tab changes whether this tab may write the chat.
-      const stops = [deps.sharing.onProjectsChange(refresh), deps.sharing.shares.onChange(refresh)];
-      bound = { deps, store, presence, stopProjects: () => stops.forEach((stop) => stop()) };
+      bound = bindChatDeps(deps, refresh);
       refresh();
     },
     onAvailabilityChange(listener) {

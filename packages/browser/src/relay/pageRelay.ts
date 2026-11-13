@@ -158,10 +158,9 @@ function createEmailReader(relay: BrowserRelayAccount, logger: ILogger): (relayU
   };
 }
 
-export function createPageRelay(options: PageRelayOptions): PageRelay {
-  const { logger } = options;
-  const relay = createBrowserRelayAccount({ ...options, chooseAccount, confirmSignInAgain });
-  const deps: EnsureRelayDeps = {
+/** What connecting the relay needs of the page: the user's consent, then a toast for a failure. */
+function ensureDepsOf(relay: EnsureRelayDeps["relay"], logger: EnsureRelayDeps["logger"]): EnsureRelayDeps {
+  return {
     relay, logger,
     confirmConnect: async () => {
       if (!(await confirmConnect())) { return false; }
@@ -170,6 +169,12 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     },
     showFailure: (message) => { showToast(message, "error"); },
   };
+}
+
+export function createPageRelay(options: PageRelayOptions): PageRelay {
+  const { logger } = options;
+  const relay = createBrowserRelayAccount({ ...options, chooseAccount, confirmSignInAgain });
+  const deps = ensureDepsOf(relay, logger);
   const requireBrowserRelay = (): Promise<RelayAccount | undefined> => ensureRelay(deps);
   const rotate = (): Promise<void> => rotateRelay(relay, deps);
   const disconnect = async (relayUrl: string): Promise<void> => {

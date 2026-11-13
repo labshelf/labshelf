@@ -217,24 +217,14 @@ export function serializeRuns(jobs: { run(): Promise<void>; pull(): Promise<void
 
 const NO_RELAY: RemoteAccessResult = { ok: false, reason: "no_relay", message: "Connect Cloudflare first." };
 
-export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAccess {
-  const { relayAccounts, log } = deps;
-  // The last sync's storage, kept for the library it ran on.
-  let last: { libraryId: string; storage: MirrorStorage } | undefined;
-
-  async function build(): Promise<Built | undefined> {
-    const account = await relayAccounts.get();
-    if (!account) return undefined;
-    const libraryId = await readCurrentLibraryId();
-    return buildMirror(deps, account, (storage) => { last = { libraryId, storage }; });
-  }
-
+/** The remote access over the mirror built for the account connected at each call. */
+function accessOver(build: () => Promise<Built | undefined>): RemoteAccess {
   // Every call builds over the account connected at that time; without one there is nothing to turn off.
   const act = (use: (access: RemoteAccess) => Promise<RemoteAccessResult>, none = NO_RELAY) => async (): Promise<RemoteAccessResult> => {
     const built = await build();
     return built ? use(built.access) : none;
   };
-  const access: RemoteAccess = {
+  return {
     turnOn: act((a) => a.turnOn()),
     turnOff: act((a) => a.turnOff(), { ok: true }),
     status: async () => {
@@ -250,6 +240,21 @@ export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAc
       return built ? built.access.estimatePaperPdfs() : { bytes: 0, files: 0 };
     },
   };
+}
+
+export function createPageRemoteAccess(deps: PageRemoteAccessDeps): PageRemoteAccess {
+  const { relayAccounts, log } = deps;
+  // The last sync's storage, kept for the library it ran on.
+  let last: { libraryId: string; storage: MirrorStorage } | undefined;
+
+  async function build(): Promise<Built | undefined> {
+    const account = await relayAccounts.get();
+    if (!account) return undefined;
+    const libraryId = await readCurrentLibraryId();
+    return buildMirror(deps, account, (storage) => { last = { libraryId, storage }; });
+  }
+
+  const access = accessOver(build);
   const remote = createAccountRemote({
     flag: { read: readFlag, write: writeFlag },
     access,
