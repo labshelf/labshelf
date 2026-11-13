@@ -13,3 +13,4 @@ export { renderPageHeading, mountPageTabs, moveTabFocus, renderSegmentedFilter, 
 export { askIconPicker, type IconPickerOptions } from "./iconPicker.js";
 export { renderPickerDialog, renderTextButton, type PickerDialog, type PickerDialogOptions } from "./pickerDialog.js";
 export { createNotePopover, NOTE_POPOVER_MIN, NOTE_POPOVER_MAX_WIDTH, NOTE_POPOVER_MAX_HEIGHT_SHARE, type NotePopover, type PopoverAnchor } from "./notePopover.js";
+export { createFloatingWindows, type FloatingWindows, type FloatingWindow, type FloatingWindowSpec } from "./floatingWindow.js";
