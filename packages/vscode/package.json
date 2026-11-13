@@ -1735,6 +1735,7 @@
     "dev": "node build/host.mjs --watch & node build/webviews.mjs --watch & wait",
     "typecheck": "tsc --noEmit -p ./ && tsc --noEmit -p tsconfig.webview.json",
     "vscode:prepublish": "node build/host.mjs --production && node build/webviews.mjs --production",
+    "package:vsix": "node build/packageVsix.mjs",
     "lint": "node ../../scripts/lint/eslint.mjs",
     "test": "jest",
     "test:watch": "jest --watch",

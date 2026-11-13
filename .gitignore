@@ -9,6 +9,7 @@ packages/*/dist/
 .vscode-test/
 coverage/
 *.vsix
+.vsix-stage/
 *.db
 *.db-shm
 *.db-wal

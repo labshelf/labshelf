@@ -1,6 +1,6 @@
 /** Bundles the @labshelf/browser MV3 extension for chrome and firefox targets. */
 import { build as esbuild } from "esbuild";
-import { mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleRelayWorker, bundleShareWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
@@ -80,6 +80,18 @@ async function buildOne(target, workerScripts) {
   await vendorDictionaries({ outDir });
   // eslint-disable-next-line no-console
   console.log(`[labshelf-browser] built ${target} → ${outDir}`);
+  await mirrorToVmShare(target, outDir);
+}
+
+/** Copies a built target to `$LABSHELF_VM_SHARE/labshelf-<target>`, the folder a test VM loads unpacked; unset skips it. */
+async function mirrorToVmShare(target, outDir) {
+  const share = process.env.LABSHELF_VM_SHARE;
+  if (!share) return;
+  const dest = resolve(share, `labshelf-${target}`);
+  await rm(dest, { recursive: true, force: true });
+  await cp(outDir, dest, { recursive: true });
+  // eslint-disable-next-line no-console
+  console.log(`[labshelf-browser] mirrored ${target} → ${dest}`);
 }
 
 async function main() {
