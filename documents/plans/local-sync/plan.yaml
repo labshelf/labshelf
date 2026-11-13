@@ -81,7 +81,7 @@ sessions:
   - id: "9"
     file: sessions/9.yaml
     depends_on: ["8"]
-    owns: [packages/core/src/writing/protocol.ts, packages/vscode/src/writing/, packages/vscode/src/consult/, packages/browser/src/writing/, packages/browser/src/consult/]
+    owns: [documents/plans/local-sync/, packages/core/src/writing/protocol.ts, packages/vscode/src/writing/, packages/vscode/src/consult/, packages/vscode/__tests__/writing/, packages/vscode/__tests__/consult/, packages/vscode/jest.config.js, packages/browser/src/writing/, packages/browser/src/consult/, packages/browser/__tests__/consult/, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts]
   - id: "10"
     file: sessions/10.yaml
     depends_on: ["9"]

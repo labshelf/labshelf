@@ -2,7 +2,173 @@ schema: session/v1
 id: "9"
 goal: "Hosts wire the source editor footer and EditableFile: VS Code (SourceDocument channel per window, codeSource write with allow-list, command) and browser (replicas, showOpenFilePicker on Chromium); A9-A12 pass from the editor."
 depends_on: ["8"]
-owns: []
+owns:
+  - documents/plans/local-sync/
+  - packages/core/src/writing/protocol.ts
+  - packages/vscode/src/writing/
+  - packages/vscode/src/consult/
+  - packages/vscode/__tests__/writing/
+  - packages/vscode/__tests__/consult/
+  - packages/vscode/jest.config.js
+  - packages/browser/src/writing/
+  - packages/browser/src/consult/
+  - packages/browser/__tests__/consult/
+  - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+  - packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts
 status: pending
-# No specs yet: first write this session's packages (orchestrate references/planning.md) from plan.yaml D1-D9 and research/*.brief.yaml, run the tester and plan red, then run them.
-packages: []
+# Handoff (run 1, 100k context warning): specs 9.1-9.3 written and pending; next run: plan tests + tester per spec, plan red, plan lint, then implementers 9.1 and 9.3 in parallel, 9.2 after 9.1, finish session (gate: --no-lint only, no lint, no baselines), plan close.
+# Scouted at 99bc8913f: research/vscode-consult.brief.yaml, research/browser-consult.brief.yaml.
+# Defaults (recorded): ConsultIo.open is a no-op in both hosts (the EditableFileOpener does the opening); a consult file is keyed by a page-made window key, not the URI, so two windows of one file are two clients; VS Code code paths are project-relative (listWorkspaceCodeFiles/resolveCodeFile), a panel with no project lists no code and has no Browse; browser code paths are library-relative hub keys.
+packages:
+  - id: "9.1"
+    plan: local-sync
+    sha: 99bc8913f
+    goal: "VS Code host side of the consult window: the consult envelopes in the source editor protocol, a VS Code ConsultIo answered with answerConsult, and per-window file sessions (text files as one more client of the URI's SourceAuthority, qmd notes through the notes editor's item edits), wired into the source editor provider."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/writing/protocol.ts, lines: "1-60", why: "add the consult envelope types and guards (isConsultOutbound, isConsultInbound) beside the existing unions; existing parsers unchanged"}
+      - {path: packages/vscode/src/consult/consultIo.ts, lines: "1-1", why: "new: createVscodeConsultIo"}
+      - {path: packages/vscode/src/consult/consultFiles.ts, lines: "1-1", why: "new: createConsultFiles (per-panel file sessions by window key)"}
+      - {path: packages/vscode/src/consult/index.ts, lines: "1-1", why: "new barrel"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "142-161", why: "createAuthorities hoisted to one module-level registry shared by source editor panels and consult files (export from a new sourceEditor/authorities.ts)"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "193-216", why: "PanelSession holds the panel's ConsultFiles"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "273-278", why: "route consult envelopes before handlePageMessage, as projectSearch is"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "381-385", why: "dispose the panel's consult files with the panel"}
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "247-256", why: "export paperPdf for ConsultIo.paperPdfBase64"}
+      - {path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "133-150", why: "export createItemApplier (unchanged behaviour)"}
+    read:
+      - {path: packages/core/src/writing/consult/answerConsult.ts, lines: "12-27", why: "ConsultIo"}
+      - {path: packages/core/src/writing/consult/consultRequests.ts, lines: "1-50", why: "ConsultRef, ConsultRequest, ConsultReply"}
+      - {path: packages/vscode/src/writing/sourceEditor/documentSync.ts, lines: "83-182", why: "createDocumentSync: a second member joins the URI's Shared with its own post"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "94-118", why: "lineBreakOf and initMessage: the init a consult text file needs"}
+      - {path: packages/vscode/src/reader/citeInProject.ts, lines: "15-85", why: "projects()/listFiles to reuse for ConsultIo"}
+      - {path: packages/vscode/src/writing/codeSource.ts, lines: "15-125", why: "resolveCodeFile, browseCodeFile, listWorkspaceCodeFiles"}
+      - {path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "54-74", why: "itemMessageEdit"}
+    callers:
+      - {symbol: createAuthorities, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "345-345"}
+      - {symbol: createItemApplier, path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "133-150"}
+    seams:
+      - {path: packages/core/src/writing/protocol.ts, signature: "export type ConsultOutbound = { type: \"consult\"; id: number; request: ConsultRequest } | { type: \"consultFile\"; id: number; key: string; ref: ConsultRef } | { type: \"consultDoc\"; key: string; message: ConsultDocOutbound } | { type: \"consultRelease\"; key: string }"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export type ConsultDocOutbound = { type: \"push\"; version: number; updates: unknown[] } | { type: \"save\" } | { type: \"saveItem\"; itemId: string; body: string } | { type: \"createItem\"; itemId: string; body: string }"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export type ConsultInbound = { type: \"consultReply\"; id: number; reply: ConsultReply } | { type: \"consultFileReply\"; id: number; key: string; file: ConsultFileInit | { error: string } } | { type: \"consultDoc\"; key: string; message: ConsultDocInbound }"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export type ConsultFileInit = { kind: \"text\"; path: string; text: string; lineBreak: \"\\n\" | \"\\r\\n\"; version: number; dirty: boolean } | { kind: \"qmd\"; path: string; text: string }"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export type ConsultDocInbound = Extract<SourceEditorInbound, { type: \"updates\" | \"resync\" | \"dirty\" }> | { type: \"update\"; text: string }"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export function isConsultOutbound(value: unknown): value is ConsultOutbound"}
+      - {path: packages/core/src/writing/protocol.ts, signature: "export function isConsultInbound(value: unknown): value is ConsultInbound"}
+      - {path: packages/vscode/src/consult/consultIo.ts, signature: "export function createVscodeConsultIo(deps: VscodeConsultDeps): ConsultIo"}
+      - {path: packages/vscode/src/consult/consultFiles.ts, signature: "export function createConsultFiles(deps: ConsultFilesDeps): { handle(message: ConsultOutbound): Promise<void>; dispose(): void }"}
+    decided:
+      - "Protocol: the consult messages ride beside the editor's own, like projectSearch: guards isConsultOutbound/isConsultInbound accept exactly the shapes in seams (ConsultRequest/ConsultRef/ConsultReply checked with isConsultRequest/isConsultReply and the ref guard from consultRequests.ts; updates arrays are not inspected beyond Array.isArray). parseSourceEditorInbound/Outbound are unchanged."
+      - "Window key: the page makes one key per consult window (any string); every consultDoc/consultRelease names it. Two windows of the same file are two keys and two clients."
+      - "consult {id, request} -> post {type:'consultReply', id, reply: await answerConsult(io, {projectId}, request)}; projectId is the panel's project id, omitted when the panel has none."
+      - "consultFile {id, key, ref}: resolve the ref to a file URI: manuscript/projectNote -> the project's folder joined with the path (reject absolute or '..' paths); paperNotes -> the paper's notes.qmd (createPaperFiles(paper.path).notes); code -> resolveCodeFile(project folder, path) (the allow-list: workspace folders + picked; throws otherwise); paper and pickedFile -> error reply. Open it with vscode.workspace.openTextDocument. A .qmd file is kind qmd, anything else kind text. Reply {type:'consultFileReply', id, key, file} or file {error: <sentence>} on any failure."
+      - "Text file session: acquire the URI's authority from the shared registry (the same SourceAuthority a source editor tab of that file uses), join it with createDocumentSync whose post wraps every message as {type:'consultDoc', key, message}; init = {kind:'text', path, text: authority text LF-normalised, lineBreak, version, dirty} as initMessage builds it. consultDoc push/save -> that member's receive. consultRelease or panel dispose -> dispose the member and release the authority exactly once."
+      - "qmd session: init {kind:'qmd', path, text: document.getText()}; saveItem/createItem -> createItemApplier (exported from notesEditor/provider.ts, which serialises edits, applies itemMessageEdit and schedules the 300 ms autosave of session 5); every onDidChangeTextDocument of that URI posts {type:'consultDoc', key, message:{type:'update', text}}; release disposes the listener."
+      - "VS Code ConsultIo: listPapers = library papers; paperPdfBase64 = exported bridges paperPdf; annotationsOf = highlightsOf; paperNotesText = paperNotes.read; paperIdsWithNotes = papers whose notes.qmd exists (workspace.fs.stat); projects/listFiles reuse createReaderCiteIo's pieces; projectNotes = the project's .qmd files from listFiles; listCodeFiles = listWorkspaceCodeFiles(project folder) or [] without a project; browse = browseCodeFile(project folder) -> {path, name: basename} or null, and browse is omitted without a project; open = async no-op."
+      - "createAuthorities moves to packages/vscode/src/writing/sourceEditor/authorities.ts as one module-level registry (acquire(document)/release(document), refcounted by URI); the provider uses it unchanged in behaviour."
+      - "packages/vscode/jest.config.js gains '@labshelf/core/consult' -> '../core/src/writing/consult/dom/index.ts' in coreSubpathFiles (for 9.2's tests)."
+      - "Testing policy: run only node scripts/agents/run.mjs typecheck core, typecheck vscode and the listed test commands, never pnpm gate or lint."
+    acceptance:
+      - {id: "9.1a", check: "(tested in consultFiles.test.ts) isConsultOutbound/isConsultInbound accept each seam shape and reject unknown types, a bad ref, a missing key or id"}
+      - {id: "9.1b", check: "a consult request is answered with consultReply carrying the same id and answerConsult's reply; the list of code files is the workspace's when the panel has a project and empty without one; canBrowse is false without a project"}
+      - {id: "9.1c", check: "consultFile for a manuscript opens the document, replies a text init with LF text and the document's version and dirty state; a push under its key edits the TextDocument through the same SourceAuthority a source editor panel of that file holds (one authority per URI), and that panel receives the updates"}
+      - {id: "9.1d", check: "consultFile for a code path outside the workspace and not picked replies an error; a picked one opens"}
+      - {id: "9.1e", check: "a paperNotes ref opens the paper's notes.qmd as qmd; saveItem applies the item edit to the document; a change of that document posts consultDoc update under the key"}
+      - {id: "9.1f", check: "consultRelease and panel dispose release the authority and drop listeners exactly once (a second release is a no-op)"}
+      - {id: A10, check: "core of A10 in VS Code: a consult window's text edit and the source editor tab of the same file are two clients of one SourceAuthority"}
+    tests:
+      hidden: [documents/plans/local-sync/tests/9.1/packages/vscode/__tests__/consult/consultFiles.test.ts, documents/plans/local-sync/tests/9.1/packages/vscode/__tests__/consult/consultIo.test.ts]
+      command: node scripts/agents/run.mjs test vscode --spec 9.1 --plan local-sync -- packages/vscode/__tests__/consult/consultFiles.test.ts packages/vscode/__tests__/consult/consultIo.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/sourceEditor/documentSync.test.ts packages/vscode/__tests__/writing/sourceEditor/provider.test.ts packages/vscode/__tests__/writing/notesEditor/provider.test.ts
+  - id: "9.2"
+    plan: local-sync
+    sha: 99bc8913f
+    goal: "The VS Code source editor webview shows the consult footer and opens the chooser, papers read-only and notes, manuscripts and code editable, over 9.1's envelopes."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["9.1"]
+    edit:
+      - {path: packages/vscode/src/writing/sourceEditor/webview/consultPorts.ts, lines: "1-1", why: "new: createWebviewConsult (client, openFile, inbound routing)"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/hostDocument.ts, lines: "1-1", why: "new: createHostDocument moved out of the entry, taking post"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "86-116", why: "use the moved createHostDocument with the editor's post"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "276-299", why: "createConsult(...) once at start(); its footer() joins deps.extensions; dispose on unload"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "322-364", why: "route consult inbound envelopes before parseSourceEditorInbound"}
+    read:
+      - {path: packages/core/src/writing/consult/dom/createConsult.ts, lines: "1-69", why: "ConsultOptions"}
+      - {path: packages/core/src/writing/consult/dom/editableFile.ts, lines: "1-44", why: "EditableFile text {document} / qmd {text, save, create, subscribe}"}
+      - {path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "31-69", why: "NoteFileOptions save/create signatures"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/citationPorts.ts, lines: "10-50", why: "pdf assets for pdfSource"}
+      - {path: packages/core/src/writing/protocol.ts, lines: "1-80", why: "9.1's consult envelopes"}
+    callers:
+      - {symbol: createHostDocument, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "86-116"}
+    seams:
+      - {path: packages/vscode/src/writing/sourceEditor/webview/hostDocument.ts, signature: "export function createHostDocument(init: { text: string; lineBreak: \"\\n\" | \"\\r\\n\"; version: number; dirty: boolean }, post: (message: { type: \"push\"; version: number; updates: unknown[] } | { type: \"save\" }) => void): { document: SourceDocument; deliver(message: Extract<SourceEditorInbound, { type: \"updates\" | \"resync\" | \"dirty\" }>): void }"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/consultPorts.ts, signature: "export function createWebviewConsult(post: (message: ConsultOutbound) => void): { client: ConsultClient; openFile: EditableFileOpener; receive(message: ConsultInbound): void }"}
+    decided:
+      - "client(request): posts {type:'consult', id, request} with a fresh id and resolves with the matching consultReply's reply; replies for unknown ids are ignored."
+      - "openFile(ref): makes a fresh key, posts consultFile {id, key, ref}, awaits the consultFileReply; {error} rejects with Error(error). Text init -> EditableFile {kind:'text', path, binding:{document}} where document comes from createHostDocument(init, (m) => post({type:'consultDoc', key, message: m})); consultDoc updates/resync/dirty under that key go to its deliver. qmd init -> {kind:'qmd', path, binding:{text, save:(itemId, body) => post saveItem, create:(itemId, body) => post createItem, subscribe(listener)}} with consultDoc update messages feeding the listeners. save/create resolve once posted."
+      - "release() posts {type:'consultRelease', key} once and drops the key's routing; later messages for the key are ignored."
+      - "The entry builds one createConsult({client, openFile, pdfSource, onError}) at start(); pdfSource(bytes) = {assets from the cached pdfAssets request, createWorker as citationPorts does, readBytes: async () => bytes.slice(0)}; onError logs and shows nothing new. footer() is appended to mountSourceEditor's extensions; the main document's createHostDocument behaviour is unchanged (the editor's own push/save messages)."
+      - "Testing policy: run only node scripts/agents/run.mjs typecheck vscode and the listed test commands, never pnpm gate or lint."
+    acceptance:
+      - {id: "9.2a", check: "client posts a consult envelope and resolves with the reply of the same id; two requests in flight resolve with their own replies"}
+      - {id: "9.2b", check: "openFile of a text ref resolves an EditableFile whose document starts from the init and posts push/save as consultDoc under its key; updates under that key reach the document's listeners, other keys' do not"}
+      - {id: "9.2c", check: "openFile of a qmd ref resolves a qmd binding; save and create post saveItem/createItem; update messages reach subscribe listeners until unsubscribed"}
+      - {id: "9.2d", check: "an error reply rejects openFile with its sentence; release posts consultRelease once"}
+      - {id: "9.2e", check: "createHostDocument replays messages delivered before the first subscribe (existing behaviour kept)"}
+      - {id: A9, check: "VS Code part of A9: the source editor footer's Consult opens the chooser (checked by hand)"}
+    tests:
+      hidden: [documents/plans/local-sync/tests/9.2/packages/vscode/__tests__/writing/sourceEditor/webview/consultPorts.test.ts, documents/plans/local-sync/tests/9.2/packages/vscode/__tests__/writing/sourceEditor/webview/hostDocument.test.ts]
+      command: node scripts/agents/run.mjs test vscode --spec 9.2 --plan local-sync -- packages/vscode/__tests__/writing/sourceEditor/webview/consultPorts.test.ts packages/vscode/__tests__/writing/sourceEditor/webview/hostDocument.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+  - id: "9.3"
+    plan: local-sync
+    sha: 99bc8913f
+    goal: "The browser source tab shows the consult footer; manuscripts, project notes, paper notes and library code files open editable as replicas of the page's hub, papers read-only, and on Chromium Browse opens a picked file writable for the page's life (no Browse on Firefox)."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/browser/src/consult/consultHost.ts, lines: "1-1", why: "new: createBrowserConsultIo, createBrowserFileOpener, createBrowserConsult"}
+      - {path: packages/browser/src/consult/pickedFile.ts, lines: "1-1", why: "new: picked-file registry and its single-view EditableFile"}
+      - {path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "169-190", why: "extensions = feed extension + consult footer"}
+      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "46-85", why: "create the tab's consult in loadEditor; dispose with the tab (112-124, 200-218, retry 249-261)"}
+    read:
+      - {path: packages/core/src/writing/consult/dom/createConsult.ts, lines: "1-69", why: "ConsultOptions"}
+      - {path: packages/core/src/writing/consult/dom/editableFile.ts, lines: "1-44", why: "editableFromReplica"}
+      - {path: packages/core/src/writing/consult/answerConsult.ts, lines: "12-27", why: "ConsultIo"}
+      - {path: packages/browser/src/localSync/liveFiles.ts, lines: "12-40", why: "LiveFiles.open -> LiveFile {replica, flush, release}"}
+      - {path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "40-135", why: "fullPathOf, codeLinkSource, paper deps, pdfOf"}
+      - {path: packages/browser/src/writing/libraryCitation.ts, lines: "80-125", why: "ready projects and listFiles to reuse"}
+    callers:
+      - {symbol: editorDeps, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "73-73"}
+    seams:
+      - {path: packages/browser/src/consult/consultHost.ts, signature: "export function createBrowserConsultIo(deps: BrowserConsultDeps): ConsultIo"}
+      - {path: packages/browser/src/consult/consultHost.ts, signature: "export function createBrowserFileOpener(deps: { live: LiveFiles; picked: PickedFiles; folderOf(projectId: string): Promise<string | undefined>; notesPathOf(paperId: string): Promise<string | undefined> }): EditableFileOpener"}
+      - {path: packages/browser/src/consult/pickedFile.ts, signature: "export function createPickedFiles(picker?: () => Promise<FileSystemFileHandle | undefined>): PickedFiles"}
+      - {path: packages/browser/src/consult/pickedFile.ts, signature: "export interface PickedFiles { readonly available: boolean; pick(): Promise<{ id: string; name: string } | null>; open(id: string): Promise<EditableFile> }"}
+    decided:
+      - "Opener keys are library-relative hub paths: manuscript/projectNote -> join(project folder, path); paperNotes -> createPaperFiles(paper.path, joinWith('/')).notes; code -> the path as listed (already library-relative). It opens live.open(key), awaits replica.ready (on failure releases and rethrows), and returns editableFromReplica(replica, key, () => file.flush()) wrapped so release() flushes then calls the LiveFile's release() exactly once (never replica.release() directly). The tab's own file and a consult window of it share the one replica (refcount)."
+      - "No hub (readPageLiveFiles() resolves undefined): the source tab mounts without the consult footer."
+      - "ConsultIo: listPapers = listCachedPaperRecords; paperPdfBase64 = PDF bytes base64; annotationsOf via PaperSidecarStore; paperNotesText = paper notes port read; paperIdsWithNotes = papers whose notes.qmd stats; projects/listFiles reuse libraryCitation's ready-project listing (no third copy of listReady: export and reuse it); projectNotes = the project's .qmd files; listCodeFiles = over ready projects, library-relative paths of files that pass the same filter as codeLinkSource (deriveCodeLanguage defined, not .tex); open = async no-op; browse present only when picked.available."
+      - "Picked files: available = typeof window.showOpenFilePicker === 'function' (Chromium); the default picker calls it with no await before it, so the chooser's click gesture holds through answerConsult. pick() keeps the FileSystemFileHandle in a Map by a fresh id; null when cancelled (AbortError). open(id): reads handle.getFile().text() into a fresh Y.Doc's Y.Text, returns {kind:'text', path: name, binding:{collab:{text}}, release}; every change writes the whole text through handle.createWritable() 300 ms after the last change; release flushes a pending write once and stops observing. A second open of the same id gets its own doc (single view, no hub)."
+      - "ConsultClient = (request) => answerConsult(io, {projectId}, request), called directly (same page). pdfSource(bytes) = {assets: extensionPdfAssets(), createWorker: createPdfWorker, readBytes: async () => bytes.slice(0)}."
+      - "One consult per source tab, created in loadEditor and disposed with the tab before its own replica is released (dispose, retry and adopt paths)."
+      - "Testing policy: run only node scripts/agents/run.mjs typecheck browser and the listed test commands, never pnpm gate or lint."
+    acceptance:
+      - {id: "9.3a", check: "the opener opens a manuscript ref as the hub path join(folder, path) and returns a text binding over the replica's Y.Text; a qmd note ref returns a live binding whose persist flushes the LiveFile; release flushes and releases the LiveFile once"}
+      - {id: "9.3b", check: "a paperNotes ref opens the paper's notes.qmd hub path; an unknown project or paper rejects"}
+      - {id: "9.3c", check: "ConsultIo lists library code files as library-relative paths of ready projects, filtered like codeLinkSource; paperIdsWithNotes lists only papers whose notes.qmd exists"}
+      - {id: "9.3d", check: "without showOpenFilePicker, browse is undefined (canBrowse false); with it, pick keeps the handle and open edits write the whole text through createWritable 300 ms after the last change, and release flushes a pending write"}
+      - {id: A10, check: "core of A10 in the browser: a consult window and the editor tab of the same file share one hub replica"}
+      - {id: A12, check: "browser part of A12: Chrome Browse opens a picked file editable; Firefox shows no Browse (checked by hand)"}
+    tests:
+      hidden: [documents/plans/local-sync/tests/9.3/packages/browser/__tests__/consult/consultHost.test.ts, documents/plans/local-sync/tests/9.3/packages/browser/__tests__/consult/pickedFile.test.ts]
+      command: node scripts/agents/run.mjs test browser --spec 9.3 --plan local-sync -- packages/browser/__tests__/consult/consultHost.test.ts packages/browser/__tests__/consult/pickedFile.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/localSync

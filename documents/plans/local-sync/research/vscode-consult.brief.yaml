@@ -1,0 +1,38 @@
+schema: brief/v1
+area: vscode-consult
+question: "VS Code half of D8: consult footer, chooser, read-only paper, editable notes/manuscripts/code in the source editor webview"
+sha: 99bc8913f
+reuse:
+  - {symbol: createHostDocument, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "86-116", why: "builds a SourceDocument from init + posts push/save + deliver(updates|resync|dirty), with early-message replay; hardwired to the global post() and carries NO uri. Generalise into a factory taking (post, init) and reuse per consulted file."}
+  - {symbol: createDocumentSync, path: packages/vscode/src/writing/sourceEditor/documentSync.ts, lines: "159-182", why: "member of a Shared per authority (WeakMap<Authority,Shared>, joinShared 91-112, leaveShared 114-120); receive handles only push and save; posts updates/resync/dirty through deps.post. Call it again with a second doc+authority+post wrapping messages in an envelope; no change needed to join a second client."}
+  - {symbol: createAuthorities, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "142-161", why: "refcounted Map<uri string,{authority,panels}> with acquire(document)/release(document); PRIVATE to createSourceEditorProvider (line 345). Hoist/export so consulted files and source-editor tabs share one authority per URI; consult acquire needs vscode.workspace.openTextDocument(uri) first."}
+  - {symbol: createReaderCiteIo, path: packages/vscode/src/reader/citeInProject.ts, lines: "55-85", why: "projects() = projects.list() filtered kind ready (readyProjects 20-22), listFiles = deps.projects.data.listProjectFiles(folder). Same as ConsultIo.projects/listFiles."}
+  - {symbol: paperPdf, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "247-256", why: "private; paper PDF as base64 via createPaperFiles(paper.path).pdf; export for ConsultIo.paperPdfBase64(paper). Bridge method switch at 276-309 (papers, readNote, listProjectNotes, highlightsOf, paperPdf, pdfAssets, listCodeFiles, readCodeFile, browseCodeFile)."}
+  - {symbol: resolveCodeFile, path: packages/vscode/src/writing/codeSource.ts, lines: "35-42", why: "allow-list rule (workspace folders + picked, else throws); turns a code ref into the URI. Same file: allowCodeFile 44, browseCodeFile 81 (adds to allow-list, returns project-relative path), listWorkspaceCodeFiles 117 (project-relative paths)."}
+  - {symbol: createCitationPorts, path: packages/vscode/src/writing/sourceEditor/webview/citationPorts.ts, lines: "10-50", why: "webview PDF: pdfOf(paper)->PdfDeckSource {assets, readBytes via request 'paperPdf'} after request 'pdfAssets' (assets cached async). ConsultOptions.pdfSource(bytes) reuses assets with readBytes: async()=>bytes."}
+edit:
+  - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "276-299", why: "mountSourceEditor deps; extensions at 290-294 is where createConsult(...).footer() goes. start() 322-364 transport.subscribe switch: consult envelopes before parseSourceEditorInbound."}
+  - {path: packages/core/src/writing/protocol.ts, lines: "27-30", why: "updates/resync/dirty and push/save carry no document id; multiplex with a new envelope pair like projectSearch."}
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "237-255", why: "handlePageMessage switch."}
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "273-278", why: "onDidReceiveMessage: envelope checks precede handlePageMessage; PanelSession 193-216; panel.onDidDispose 381-385."}
+  - {path: packages/vscode/src/writing/sourceEditor/documentSync.ts, lines: "159-182", why: "each consult doc = another createDocumentSync member; webview needs init {text LF, lineBreak, version, dirty} (initMessage provider.ts 98-118)."}
+  - {path: packages/vscode/jest.config.js, lines: "4-12", why: "add '@labshelf/core/consult': '../core/src/writing/consult/dom/index.ts' to coreSubpathFiles; esbuild needs no change."}
+callers:
+  - {symbol: itemMessageEdit, path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "66-74"}
+  - {symbol: createItemApplier, path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "133-150"}
+  - {symbol: createReaderCiteIo, path: packages/vscode/src/writing/citations/codeInsertPanel.ts, lines: "64-64"}
+tests:
+  - {path: packages/vscode/__tests__/writing/sourceEditor/documentSync.test.ts, covers: "joinShared, echo swallow, resync, dirty"}
+  - {path: packages/vscode/__tests__/writing/sourceEditor/provider.test.ts, covers: "provider routing and panel lifecycle"}
+  - {path: packages/vscode/__tests__/writing/notesEditor/provider.test.ts, covers: "itemMessageEdit and item applier"}
+  - {path: packages/vscode/__tests__/writing/sourceEditor/hostPorts.test.ts, covers: "webview request/response plumbing"}
+contracts: []
+commands: ["node scripts/agents/run.mjs test vscode -- __tests__/writing/sourceEditor/documentSync.test.ts __tests__/writing/sourceEditor/provider.test.ts __tests__/writing/notesEditor/provider.test.ts"]
+risks:
+  - "createItemApplier is private (serialises edits, autosave.schedule, posts {type:'update', text} on failure); export it for the qmd consult channel."
+  - "No consult code exists in packages/vscode/src. paperIdsWithNotes and projectNotes have no single existing function (see deps.noteSource(project) in bridges.ts 277-281, src/localSync/paperNotesPort.ts 8-16)."
+  - "sourceEditorEntry.ts has no test; keep logic in a testable module."
+  - "createAuthorities is per-provider; hoist or a tab and a consult window of the same file diverge on one TextDocument."
+  - "Each consult doc needs its own acquire/release on window close and on panel dispose."
+  - "resolveCodeFile throws 'outside the project' when projectRoot is undefined."
+  - "Authority text is LF-normalised in initMessage; the consult doc init must do the same."
