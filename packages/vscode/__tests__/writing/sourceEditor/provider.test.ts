@@ -61,6 +61,9 @@ function fakePanel() {
   };
 }
 
+/** Lets the page's ready handling, which reads the editor prefs first, run to the end. */
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
 async function open() {
   const register = jest.fn((_view: SourceView, _focused: unknown) => ({ dispose() {} }));
   const provider = createSourceEditorProvider({
@@ -88,6 +91,7 @@ describe("the view's updates", () => {
   it("4.2c insertText posts one command message with the text", async () => {
     const { fromPage, updates, commands } = await open();
     fromPage({ type: "ready" });
+    await settle();
 
     updates.insertText("\\alpha");
 
@@ -97,6 +101,7 @@ describe("the view's updates", () => {
   it("4.2c insertSnippet posts one command message with the snippet", async () => {
     const { fromPage, updates, commands } = await open();
     fromPage({ type: "ready" });
+    await settle();
 
     updates.insertSnippet("\\begin{table}${1}\n$0");
 
@@ -106,6 +111,7 @@ describe("the view's updates", () => {
   it.each(["bold", "italic"] as const)("4.2c wrap(%s) posts one command message with the style", async (style) => {
     const { fromPage, updates, commands } = await open();
     fromPage({ type: "ready" });
+    await settle();
 
     updates.wrap(style);
 
@@ -115,6 +121,7 @@ describe("the view's updates", () => {
   it("4.2c each call posts its own message, in call order", async () => {
     const { fromPage, updates, commands } = await open();
     fromPage({ type: "ready" });
+    await settle();
 
     updates.insertText("a");
     updates.wrap("bold");
@@ -132,6 +139,7 @@ describe("the view's updates", () => {
     const second = await open();
     first.fromPage({ type: "ready" });
     second.fromPage({ type: "ready" });
+    await settle();
 
     first.updates.insertText("only first");
 

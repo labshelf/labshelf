@@ -100,7 +100,7 @@ describe('registerSpaces.test', () => {
 
   it("counts source issues, manual items and resolved reading entries", async () => {
     jest.mocked(readChecklistSignals).mockResolvedValue({ sources: [], todos: [{ file: "main.tex", line: 1, text: "Fix" }], brokenRefs: [], staleFigures: [],
-      manual: [{ id: "m", text: "Check", done: true, createdAt: "2026-10-21" }], noteTasks: [], noteOrigins: [], noteTitles: new Map() });
+      manual: [{ id: "m", text: "Check", done: true, createdAt: "2026-10-21" }], noteTasks: [], noteOrigins: [], codeOrigins: [], noteTitles: new Map() });
     const writing = { projects: { list: () => [{ kind: "ready", folder: "/project", settings: {} }], reads: jest.fn() },
       readingLists: { of: async () => ({ entries: [{ key: "p", paper: { title: "Paper", status: "done" } }, { key: "missing" }] }) }, logger: {} };
     expect(await readProjectChecklist(writing as never, { id: "/project" } as never)).toEqual({ done: 2, total: 3 });
@@ -120,7 +120,7 @@ describe('spacesService.test', () => {
       onDidChangeRoot: rootChanges.event, require: async () => services,
     } as unknown as LibraryRootController;
     const projectLibrary = { list: jest.fn(async () => []), onDidChange: () => () => {}, open: jest.fn() } as unknown as ProjectLibraryPort;
-    const host = new SpacesService({ controller, paths, projectLibrary: () => projectLibrary, readChecklist: async () => undefined, projectId, logger, selectPaper: async () => {} });
+    const host = new SpacesService({ controller, paths, projectLibrary: () => projectLibrary, readChecklist: async () => undefined, projectId, logger, selectPaper: async () => {}, projectChat: async () => undefined });
     return { host, rootChanges, services, projectLibrary };
   }
 
