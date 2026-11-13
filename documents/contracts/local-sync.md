@@ -52,4 +52,10 @@ In the browser exactly one page writes a file: the holder of the Web Lock `labsh
 
 **VS Code** writes a file through its open TextDocument (WorkspaceEdit and save) and through atomic fs only when none is open; the notes and deck editors save 300 ms after their last edit; a dirty LabShelf document whose file changes on disk is merged with base = the text at its last save, a conflict keeping the document side and writing the disk side to a conflict copy (plan D6).
 
+**VS Code LabShelf writers.** Every LabShelf text write (the library file system's `writeText` and the paper notes port, so reader notes too) goes through the window's open TextDocument of the file, as one minimal edit and a save, and its reads see that document's text, unsaved edits included; a file with no open document is written atomically on disk (plan D6a).
+
+**VS Code dirty-document merge.** The source, notes and deck editors track their documents while a panel is open. When the file changes on disk while the document is dirty, the disk text is merged three-way with base = the document's text at its last save: the document is reverted to the disk text (so VS Code shows no "file is newer" dialog), the merged text is applied as one edit and saved. A conflict keeps the document side, writes the disk side to a conflict copy and shows a warning naming it. A clean document is left to VS Code to reload (plan D6c).
+
+**VS Code autosave and reader.** The notes and deck editors save their document 300 ms after the last page edit; the source editor saves only on an explicit save, and a dirty `.tex` is covered by the merge above (plan D6b). The reader panel follows the paper's `notes.qmd` as a document and as a file, and re-pushes its notes when either changes, whichever editor made the edit (plan D6d).
+
 **/open** merges on the page side: a 409 from the mirror edit fetches the current row and merges (base = the text the page loaded); a clean merge is sent again with the row hash as base, a conflict shows the conflict notice. The page re-checks the row hash of its open files on focus, visibility and every 30 s (plan D7).

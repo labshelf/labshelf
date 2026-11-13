@@ -9,7 +9,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
-import { createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../../../src/writing/dom/sourceEditor/editor";
+import { createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../../../src/writing/dom/sourceEditor/editorSupport";
 import { codeHighlight } from "../../../../src/writing/dom/sourceEditor/editorTheme";
 import { typstLanguage } from "../../../../src/writing/dom/sourceEditor/typst";
 

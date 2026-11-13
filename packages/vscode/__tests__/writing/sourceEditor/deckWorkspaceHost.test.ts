@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 afterEach(() => disposable.dispose());
 
-const bridge = () => createDeckWorkspaceBridge(document, {} as vscode.Webview);
+const bridge = () => createDeckWorkspaceBridge(document, { log: jest.fn(), error: jest.fn() } as never);
 
 describe("writeFile", () => {
   it("6.3c replaces an open document's whole text through applyEdit and saves it", async () => {
@@ -97,7 +97,7 @@ describe("deckExportPdf of a talk", () => {
     const target = vscode.Uri.file("/out/main-handout.pdf");
     (vscode.window.showSaveDialog as jest.Mock).mockImplementation(async () => target);
     (vscode.workspace.fs.readFile as jest.Mock).mockImplementation(async () => new Uint8Array([1, 2]));
-    await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null);
+    await createDeckWorkspaceBridge(talkDocument, { log: jest.fn(), error: jest.fn() } as never).handle("deckExportPdf", null);
     const items = (vscode.window.showQuickPick as jest.Mock).mock.calls[0]![0] as Array<{ label: string }>;
     expect(items.map((item) => item.label)).toEqual(TALK_PDF_CHOICES.map((choice) => choice.label));
     expect((vscode.window.showSaveDialog as jest.Mock).mock.calls[0]![0].defaultUri.fsPath).toBe("/proj/talk/main-handout.pdf");
@@ -108,11 +108,11 @@ describe("deckExportPdf of a talk", () => {
 
   it("11.3 Notes pages default to <name>-notes.pdf and Escape cancels", async () => {
     pickLabel("Notes pages");
-    await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null);
+    await createDeckWorkspaceBridge(talkDocument, { log: jest.fn(), error: jest.fn() } as never).handle("deckExportPdf", null);
     expect((vscode.window.showSaveDialog as jest.Mock).mock.calls[0]![0].defaultUri.fsPath).toBe("/proj/talk/main-notes.pdf");
     (vscode.window.showSaveDialog as jest.Mock).mockClear();
     pickLabel(undefined);
-    expect(await createDeckWorkspaceBridge(talkDocument, {} as vscode.Webview).handle("deckExportPdf", null)).toBeNull();
+    expect(await createDeckWorkspaceBridge(talkDocument, { log: jest.fn(), error: jest.fn() } as never).handle("deckExportPdf", null)).toBeNull();
     expect(vscode.window.showSaveDialog).not.toHaveBeenCalled();
   });
 });

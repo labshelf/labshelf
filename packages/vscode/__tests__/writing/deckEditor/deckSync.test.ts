@@ -1,7 +1,8 @@
 // Tests the deck editor's document sync: minimalReplace, one WorkspaceEdit per page gesture over deck.html and theme.css, stale versions, swallowed echoes and posted updates.
 import * as vscode from "vscode";
 
-import { createDeckSync, minimalReplace, type DeckSync } from "../../../src/writing/deckEditor/deckSync";
+import { createDeckSync, type DeckSync } from "../../../src/writing/deckEditor/deckSync";
+import { minimalReplace } from "../../../src/localSync/documentText";
 import type { DeckHostMessage } from "../../../src/writing/deckEditor/deckMessages";
 
 // The shared mock's WorkspaceEdit only replaces, Uri has no with(), TextEdit has no replace() and tabGroups has no activeTabGroup.

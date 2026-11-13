@@ -1,6 +1,8 @@
 /** @jest-environment jsdom */
 // Tests the reader's bars: the toolbar buttons, the roving-tabindex tab strip and the preview build banner.
-import { Toolbar, type ToolbarActions, BuildBanner, TabList } from "../../../src/reader/dom/toolbar";
+import { Toolbar, type ToolbarActions } from "../../../src/reader/dom/toolbar";
+import { BuildBanner } from "../../../src/reader/dom/readerUi";
+import { TabList } from "../../../src/reader/dom/elements";
 
 function setupToolbar() {
   document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
