@@ -89,18 +89,16 @@ function setGated(gated: boolean): void {
   document.body.classList.toggle(GATED_CLASS, gated);
 }
 
-const CONNECT_HINT = "Already use LabShelf for VS Code or the terminal? Run Connect the Browser in VS Code, or ";
-
-function bridgeHelp(): HTMLElement {
-  const download = renderElement("a", { href: createHelperDownloadUrl(""), target: "_blank", rel: "noopener", text: "Download LabShelf Helper" });
-  bx.runtime.getPlatformInfo().then((info) => { download.setAttribute("href", createHelperDownloadUrl(info.os)); }, () => undefined);
-  return renderElement("div", { class: "lsrc-reason" },
-    renderElement("div", {}, "This browser cannot open folders itself. ", download, ", install it, then choose Check again and give it the folder."),
-    renderElement("div", {}, CONNECT_HINT, renderInlineCode("labshelf bridge install"), " in the terminal, and choose Check again."));
-}
-
-function connectHint(): HTMLElement {
-  return renderElement("div", { class: "lsrc-reason" }, CONNECT_HINT, renderInlineCode("labshelf bridge install"), " in the terminal, and choose Check again.");
+/** The other way to a folder, below the main button: connect an app that already has one, then re-check. */
+function renderAlternative(pickable: boolean, check: HTMLButtonElement): HTMLElement {
+  const lines: HTMLElement[] = [];
+  if (!pickable) {
+    const download = renderElement("a", { href: createHelperDownloadUrl(""), target: "_blank", rel: "noopener", text: "LabShelf Helper" });
+    bx.runtime.getPlatformInfo().then((info) => { download.setAttribute("href", createHelperDownloadUrl(info.os)); }, () => undefined);
+    lines.push(renderElement("p", {}, "This browser cannot open folders on its own. Install ", download, ", then check again."));
+  }
+  lines.push(renderElement("p", {}, "Already use LabShelf in VS Code? Run ", renderElement("strong", { text: "LabShelf: Connect the Browser" }), " from the Command Palette, then check again."));
+  return renderElement("div", { class: "lsrc-alt" }, ...lines, check);
 }
 
 /**
@@ -132,19 +130,19 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-modal", "true");
     root.setAttribute("aria-label", "Choose the library folder");
-    const check = renderElement("button", { class: "ls-btn", type: "button" });
+    const check = renderElement("button", { class: "ls-btn ls-btn-ghost lsrc-check", type: "button" });
     setButton(check, "refresh", "Check again", false);
     check.addEventListener("click", () => void run(check, "refresh", "Check again", () => refreshLibraryLocation(options.logger)));
     const pickable = canPickFolder() || options.openLibrary !== undefined;
     text.append(
       renderElement("div", { class: "lsrc-title", text: "Choose a folder for your library" }),
-      renderElement("div", { class: "lsrc-reason", text: "LabShelf keeps your papers and notes as files in a folder on this computer. Choose one to continue." }),
+      renderElement("div", { class: "lsrc-reason", text: "LabShelf keeps your papers and notes as plain files in a folder on this computer." }),
     );
     // "not-installed" only says no folder is chosen yet, which the text above already says.
     if (source.reason !== "not-installed") text.append(renderElement("div", { class: "lsrc-reason", text: describeSourceReason(source) }));
-    text.append(renderElement("div", { class: "lsrc-actions" }, ...(pickable ? [mainButton()] : []), check));
     if (source.reason === "no-library") text.append(renderFolderPathForm(options.logger, toFolder));
-    else text.append(pickable ? connectHint() : bridgeHelp());
+    else if (pickable) text.append(renderElement("div", { class: "lsrc-actions" }, mainButton()));
+    text.append(renderAlternative(pickable, check));
     host.replaceChildren(root);
     setGated(true);
   };

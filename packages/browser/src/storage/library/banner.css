@@ -22,5 +22,20 @@
 .lsrc-folder-form { margin-top: var(--ls-space-3); }
 .lsrc-folder-form .ls-input { flex: 1; }
 .lsrc-title { font-size: var(--ls-text-md); font-weight: 600; }
-/* The gate: shown while the library has no usable folder; the page under it stays hidden or covered. */
-.lsrc-gate { max-width: 520px; }
+/* The gate: shown while the library has no usable folder; the page under it stays hidden or covered. It fills its host flat, not as a card. */
+.lsrc-banner.lsrc-gate {
+  max-width: 420px; margin: 0; padding: var(--ls-space-6); gap: var(--ls-space-4);
+  background: none; border: none; border-radius: 0; font-size: var(--ls-text-md);
+}
+.lsrc-gate .lsrc-icon { padding-top: 3px; }
+.lsrc-gate .lsrc-icon svg { width: 16px; height: 16px; }
+.lsrc-gate .lsrc-actions { margin-top: var(--ls-space-5); }
+.lsrc-gate .lsrc-actions .ls-btn-primary { width: 100%; }
+.lsrc-alt {
+  margin-top: var(--ls-space-5); padding-top: var(--ls-space-4); border-top: 1px solid var(--ls-border);
+  font-size: var(--ls-text-sm); color: var(--ls-desc);
+}
+.lsrc-alt p { margin: 0 0 var(--ls-space-2); }
+.lsrc-alt strong { color: var(--ls-fg); font-weight: 600; }
+.lsrc-check { display: inline-flex; align-items: center; gap: var(--ls-space-2); margin-left: calc(-1 * var(--ls-space-3)); }
+.lsrc-check svg { width: 12px; height: 12px; }

@@ -7,9 +7,9 @@ export type BrowserSource = Extract<LibraryLocation, { kind: "browser" }>;
 
 export function describeSourceReason(source: BrowserSource): string {
   switch (source.reason) {
-    case "not-installed": return "No folder is chosen, and neither LabShelf Helper nor LabShelf for VS Code or the terminal is connected to this browser.";
+    case "not-installed": return "No folder is chosen yet.";
     case "protocol-mismatch": return "The browser extension and LabShelf on this computer are different releases. Update both to the same release.";
-    case "no-library": return "LabShelf on this computer has no library folder yet. Enter one below, or choose it in VS Code or the terminal.";
+    case "no-library": return "LabShelf on this computer has no library folder yet. Enter one below, or choose it in VS Code.";
     case "failed": return `The connection to LabShelf on this computer failed${source.detail ? `: ${source.detail}` : "."}`;
   }
 }
