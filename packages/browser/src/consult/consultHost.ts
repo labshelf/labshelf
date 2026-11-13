@@ -4,7 +4,7 @@ import {
   PDF_FILE, PaperSidecarStore, answerConsult, bytesToBase64, createPaperFiles, formatError, joinWith, posixPathOps,
   type ConsultIo, type ConsultRef, type ILogger, type LibraryFileSystem,
 } from "@labshelf/core";
-import { createConsult, editableFromReplica, type Consult, type EditableFile, type EditableFileOpener } from "@labshelf/core/consult";
+import { createConsult, editableFromReplica, type Consult, type ConsultSetup, type EditableFile, type EditableFileOpener } from "@labshelf/core/consult";
 import { createPaperNotesPort, createSidecarPort, listCachedPaperRecords } from "../storage";
 import type { LiveFiles } from "../localSync/liveFiles";
 import { createBrowserReaderCiteIo } from "../writing";
@@ -103,8 +103,8 @@ let pagePicked: PickedFiles | undefined;
 /** The files Browse… picked, kept for the page's life. */
 const readPagePickedFiles = (): PickedFiles => (pagePicked ??= createPickedFiles());
 
-/** The consult a source tab of `projectId` mounts over the page's live files. */
-export function createBrowserConsult(deps: { fs: LibraryFileSystem; logger: ILogger; live: LiveFiles; projectId: string }): Consult {
+/** What a consult needs over the page's live files: the client, the file opener and the PDF source; `projectId` is the source tab's project, none in the reader. */
+export function createBrowserConsultSetup(deps: { fs: LibraryFileSystem; logger: ILogger; live: LiveFiles; projectId?: string }): ConsultSetup {
   const { fs, logger, live, projectId } = deps;
   const picked = readPagePickedFiles();
   const io = createBrowserConsultIo({ fs, logger, picked });
@@ -116,11 +116,19 @@ export function createBrowserConsult(deps: { fs: LibraryFileSystem; logger: ILog
       return paper === undefined ? undefined : notesPathOfPaper(paper.path);
     },
   });
-  return createConsult({
-    client: (request) => answerConsult(io, { projectId }, request),
+  return {
+    client: (request) => answerConsult(io, projectId === undefined ? {} : { projectId }, request),
     openFile,
     // pdf.js transfers the buffer to its worker, so each read gets its own copy.
     pdfSource: (bytes) => ({ assets: extensionPdfAssets(), createWorker: createPdfWorker, readBytes: async () => bytes.slice(0) }),
+  };
+}
+
+/** The consult a source tab of `projectId` mounts over the page's live files. */
+export function createBrowserConsult(deps: { fs: LibraryFileSystem; logger: ILogger; live: LiveFiles; projectId: string }): Consult {
+  const { logger, projectId } = deps;
+  return createConsult({
+    ...createBrowserConsultSetup(deps),
     onError: (error) => void logger.error(MODULE, error, { action: "consult", projectId, message: formatError(error) }),
   });
 }

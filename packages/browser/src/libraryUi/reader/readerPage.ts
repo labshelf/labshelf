@@ -23,6 +23,7 @@ import {
 import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
 import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import { createLazyPaperObjects } from "../../paperObjects/lazy";
+import type { ConsultSetup } from "@labshelf/core/consult";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { createAiCredentialStore } from "../../platform/settings";
 import { bx, createBrowserLogger, createPdfWorker, extensionPdfAssets, pdfjsAssetUrl, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
@@ -33,6 +34,7 @@ import { loadReaderPrefs, moveReaderIntoLibrary, onReaderPrefsChange, toggleLibr
 import { followLiveNotes } from "../../localSync/liveFiles";
 import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import { createReaderCite } from "../../writing";
+import { createBrowserConsultSetup } from "../../consult/consultHost";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -198,6 +200,12 @@ async function openPreview(paper: PaperRecord): Promise<void> {
   });
 }
 
+/** The reader's Consult over the page's live files hub, no project; none when the hub is missing. */
+async function readReaderConsult(): Promise<ConsultSetup | undefined> {
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error("reader", error, { action: "readLiveFiles" }); return undefined; });
+  return live ? createBrowserConsultSetup({ fs, logger, live }) : undefined;
+}
+
 async function main(): Promise<void> {
   installPageGuards();
   const preview = findPreviewPaper(location.search);
@@ -228,6 +236,7 @@ async function main(): Promise<void> {
     perf,
     pdf: { readBytes: () => readPdfBytes(paper), createWorker: createPdfWorker },
     saveAiKey,
+    consult: readReaderConsult,
   });
 }
 
