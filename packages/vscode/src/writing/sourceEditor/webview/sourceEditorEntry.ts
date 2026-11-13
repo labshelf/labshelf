@@ -21,17 +21,19 @@ import "@labshelf/core/styles/deck-shell-style.css";
 import "@labshelf/core/styles/deck-shell-grid.css";
 import "./sourceEditor.css";
 import { createPeerCursors, findElement, mountFloatingSearch, type FloatingSearch, type IconName, type MenuEntry, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createConsult, type Consult } from "@labshelf/core/consult";
 import { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
-import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { createFilledTableSnippet, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
+import { createDeckToolbarGroups, createSelectionListener, readDeckKindOf, mountSourceEditor, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, runTableDialog, showInOpenEditor, type ReviewMode, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { createFilledTableSnippet, isConsultInbound, parseSourceEditorInbound, type HostToSearch, type ILogger, type SearchTransport, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
-import { createCitationPorts } from "./citationPorts.js";
+import { createCitationPorts, requestPdfAssets } from "./citationPorts.js";
+import { createWebviewConsult } from "./consultPorts.js";
 import { createBuildFeed, mountWorkspaceInWebview } from "./deckWorkspacePorts.js";
+import { createHostDocument } from "./hostDocument.js";
 import { createHostPorts } from "./hostPorts.js";
 
-type SourceDocument = NonNullable<SourceEditorDeps["document"]>;
-type DocumentListener = Parameters<SourceDocument["subscribe"]>[0];
 type Init = Extract<SourceEditorInbound, { type: "init" }>;
+type DocumentMessage = Extract<SourceEditorInbound, { type: "updates" | "resync" | "dirty" }>;
 
 const vscodeApi = acquireVsCodeApi();
 const transport = createWebviewTransport<SourceEditorOutbound, object>(vscodeApi);
@@ -80,38 +82,6 @@ const ports = createHostPorts(post);
 /** Cite from Library's popup and the cite hover's scopes and page thumbnails. */
 const citations = createCitationPorts(ports);
 
-// ---- The host's document
-
-type DocumentMessage = Extract<SourceEditorInbound, { type: "updates" | "resync" | "dirty" }>;
-
-/** The document the editor edits: messages that come before the editor subscribes are kept and replayed, so no update is missed while it mounts. */
-function createHostDocument(init: Init): { document: SourceDocument; deliver(message: DocumentMessage): void } {
-  const listeners = new Set<DocumentListener>();
-  const early: DocumentMessage[] = [];
-  const dispatch = (listener: DocumentListener, message: DocumentMessage): void => {
-    if (message.type === "updates") { listener.updates(message.version, message.updates); }
-    else if (message.type === "resync") { listener.resync(message.text, message.version); }
-    else { listener.dirty(message.dirty); }
-  };
-  const document: SourceDocument = {
-    text: init.text, lineBreak: init.lineBreak, version: init.version, dirty: init.dirty,
-    push: (version, updates) => post({ type: "push", version, updates }),
-    subscribe(listener) {
-      listeners.add(listener);
-      for (const message of early.splice(0)) { dispatch(listener, message); }
-      return () => { listeners.delete(listener); };
-    },
-    save: () => post({ type: "save" }),
-  };
-  return {
-    document,
-    deliver(message) {
-      if (listeners.size === 0) { early.push(message); return; }
-      for (const listener of listeners) { dispatch(listener, message); }
-    },
-  };
-}
-
 // ---- The peers
 
 /** The peers the host last posted; the editor draws them and redraws when a new list arrives. */
@@ -126,6 +96,27 @@ function createPeerStore(): PeerCursorSource & { set(peers: readonly PeerCursor[
 }
 
 const peerStore = createPeerStore();
+
+/** The consult windows beside the editor: the chooser, one floating window per consulted file or paper, and the footer; built once by start(). */
+let consult: Consult | undefined;
+
+/** The consult controller over the host's envelopes; its paper view reads the pdf.js assets the host serves once they are known. */
+function createPageConsult(): { consult: Consult; receive: ReturnType<typeof createWebviewConsult>["receive"] } {
+  const webview = createWebviewConsult((message) => transport.post(message as unknown as SourceEditorOutbound));
+  let assets: Awaited<ReturnType<typeof requestPdfAssets>> | undefined;
+  void requestPdfAssets(ports).then((found) => { assets = found; }, () => undefined);
+  return {
+    receive: webview.receive,
+    consult: createConsult({
+      client: webview.client, openFile: webview.openFile,
+      pdfSource: (bytes) => {
+        if (!assets) { throw new Error("The PDF viewer is not available."); }
+        return { assets, readBytes: async () => bytes.slice(0) };
+      },
+      onError: (error) => { console.error("[sourceEditor.webview]", error); },
+    }),
+  };
+}
 
 // ---- Mount
 
@@ -271,7 +262,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
   editorPath = init.path;
   // A talk or poster opens in the workspace, which hears the editor's text and cursor through this feed.
   const deckFeed = readDeckKindOf(init.path, init.text) ? createDeckWorkspaceFeed() : undefined;
-  const host = createHostDocument(init);
+  const host = createHostDocument(init, (message) => post(message as SourceEditorOutbound));
   const { review } = init;
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
@@ -291,6 +282,7 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
       createPeerCursors(peerStore),
       createSelectionListener(({ anchor, head, line }) => post({ type: "selection", anchor, head, line })),
       ...(deckFeed ? [deckFeed.extension] : []),
+      ...(consult ? [consult.footer()] : []),
     ],
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
@@ -326,10 +318,14 @@ function start(): void {
   findElement("root").append(card);
   floatingSearch = mountFloatingSearch(card, searchChannel);
   followHostState();
+  const page = createPageConsult();
+  consult = page.consult;
+  window.addEventListener("pagehide", () => { void page.consult.dispose(); });
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   let init: Init | undefined;
   transport.subscribe((raw) => {
+    if (isConsultInbound(raw)) { page.receive(raw); return; }
     const command = parseCommand(raw);
     if (command) { commands.run(command); return; }
     const message = parseSourceEditorInbound(raw);
