@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: local-sync
 title: Local sync - one user's file stays in step across VS Code, browser tabs, /open and editable consult windows
-status: approved
+status: done
 level: N3
 goal: "One person edits the same .tex/.typ/.qmd/.html/code file from VS Code (several windows), the browser extension (several tabs and windows, editor tab and popups) and labshelf.org/open, and nothing is silently lost: views of one app stay live in step, apps meet at the disk with checked writes and a three-way merge, /open merges on a base mismatch, and the consult windows (folded in from documents/plans/consult-window) open papers read-only and manuscripts, notes and code files editable, as one more view of the same file."
 decisions:
