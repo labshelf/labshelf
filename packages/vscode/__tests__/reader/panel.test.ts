@@ -394,6 +394,39 @@ describe('readerPaperOpener.test', () => {
         expect(posted(panel, 'init')[0]).toMatchObject({ theme: 'auto', effectiveTheme: 'dark' });
       });
 
+      it('10.2c answers a consult message through the panel\'s own port and disposes the port once on close', async () => {
+        const handle = jest.fn(async () => {});
+        const dispose = jest.fn();
+        let boundPost: ((message: any) => void) | undefined;
+        const consult = jest.fn((post: (message: any) => void) => { boundPost = post; return { handle, dispose }; });
+        const { panel } = open({ consult });
+        expect(consult).toHaveBeenCalledTimes(1);
+        const message = { type: 'consult', id: 1, request: { kind: 'browse' } };
+        panel.webview._fireMessage({ command: 'consult', message });
+        await flush();
+        expect(handle).toHaveBeenCalledWith(message);
+        // The port answers through this panel's webview.
+        boundPost!({ type: 'consultReply', id: 1, reply: { ok: false, error: 'x' } });
+        expect(panel.webview.postMessage).toHaveBeenCalledWith({ type: 'consultReply', id: 1, reply: { ok: false, error: 'x' } });
+        panel.webview._fireMessage({ command: 'ready-for-init' });
+        await flush();
+        await flush();
+        expect(posted(panel, 'init')[0]).toMatchObject({ hasConsult: true });
+        expect(dispose).not.toHaveBeenCalled();
+        panel.dispose();
+        expect(dispose).toHaveBeenCalledTimes(1);
+      });
+
+      it('10.2c a panel built without a consult factory sends an init without hasConsult', async () => {
+        const { panel } = open();
+        panel.webview._fireMessage({ command: 'ready-for-init' });
+        await flush();
+        await flush();
+        const [init] = posted(panel, 'init');
+        expect(init).toBeDefined();
+        expect(init).not.toHaveProperty('hasConsult');
+      });
+
       it('logs malformed messages through the injected logger', async () => {
         const { panel, logger, paper } = open();
         panel.webview._fireMessage('garbage');

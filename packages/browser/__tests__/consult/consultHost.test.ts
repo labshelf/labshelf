@@ -8,7 +8,7 @@ jest.mock("../../src/storage/records", () => ({
   listCachedPaperRecords: async () => papers,
 }));
 
-import { createBrowserConsultIo, createBrowserFileOpener } from "../../src/consult/consultHost";
+import { createBrowserConsultIo, createBrowserConsultSetup, createBrowserFileOpener } from "../../src/consult/consultHost";
 import { createPickedFiles } from "../../src/consult/pickedFile";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
@@ -237,5 +237,47 @@ describe("9.3 The browser source tab shows the consult footer; manuscripts, proj
     expect(make().browse).toBeUndefined();
     (globalThis as { window?: unknown }).window = { showOpenFilePicker: async () => [] };
     expect(make().browse).toBeDefined();
+  });
+
+  describe("10.3 createBrowserConsultSetup", () => {
+    const libraryFiles = (): Record<string, string> => ({
+      "projects/thesis/labshelf.yaml": "id: thesis\nformat: latex\ntitle: Thesis\n",
+      "projects/thesis/main.tex": "x",
+      "projects/thesis/notes/idea.qmd": "# Idea\n",
+      "projects/other/labshelf.yaml": "id: other\nformat: latex\ntitle: Other\n",
+      "projects/other/paper.tex": "y",
+      "papers/ml/smith/notes.qmd": "# Notes\n",
+    });
+    const entriesOf = (reply: unknown): { ref: { kind: string; path?: string; projectId?: string }; group?: string }[] => {
+      const value = (reply as { ok: boolean; value: { kind: string; entries?: never[] } }).value;
+      return (value.entries ?? []) as never;
+    };
+
+    it("10.3a without projectId a list request has no project context: paper notes and every project's manuscripts, and openFile opens a paper's notes.qmd as a hub replica", async () => {
+      papers.push({ id: "p1", title: "Smith", path: "papers/ml/smith" } as PaperRecord);
+      const fake = fakeLive({ "papers/ml/smith/notes.qmd": "# Notes\n" });
+      const setup = createBrowserConsultSetup({ fs: memoryFs(libraryFiles()), logger, live: fake.live });
+      const notes = entriesOf(await setup.client({ kind: "list", what: "notes" }));
+      expect(notes.map((entry) => entry.ref.kind)).toEqual(["paperNotes"]);
+      const manuscripts = entriesOf(await setup.client({ kind: "list", what: "manuscript" }));
+      expect(manuscripts.map((entry) => `${entry.ref.projectId}:${entry.ref.path}`)).toEqual(
+        expect.arrayContaining(["thesis:main.tex", "other:paper.tex"]));
+      const file = await setup.openFile({ kind: "paperNotes", paperId: "p1" });
+      expect(fake.opened).toEqual(["papers/ml/smith/notes.qmd"]);
+      expect(file.kind).toBe("qmd");
+      file.release();
+      await settle();
+    });
+
+    it("10.3b with projectId it reaches answerConsult: the project's notes join the notes list and its manuscripts come first", async () => {
+      papers.push({ id: "p1", title: "Smith", path: "papers/ml/smith" } as PaperRecord);
+      const fake = fakeLive({});
+      const setup = createBrowserConsultSetup({ fs: memoryFs(libraryFiles()), logger, live: fake.live, projectId: "thesis" });
+      const notes = entriesOf(await setup.client({ kind: "list", what: "notes" }));
+      expect(notes.map((entry) => entry.ref.kind)).toEqual(["paperNotes", "projectNote"]);
+      expect(notes[1]!.ref).toMatchObject({ projectId: "thesis", path: "notes/idea.qmd" });
+      const manuscripts = entriesOf(await setup.client({ kind: "list", what: "manuscript" }));
+      expect(manuscripts[0]!.ref.projectId).toBe("thesis");
+    });
   });
 });
