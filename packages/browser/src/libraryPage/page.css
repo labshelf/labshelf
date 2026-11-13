@@ -7,6 +7,11 @@
 
 .lsrc-surfaces { flex-shrink: 0; }
 .lsrc-surfaces:empty, .lsrc-surfaces > div:empty { display: none; }
+/* Until the library has a folder, the gate covers the whole page. */
+body.lsrc-gated .lsrc-surfaces {
+  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+  background: var(--ls-workspace-bg);
+}
 
 /* ── Sidebar head: the brand above the shared library sidebar ───── */
 .tree-head {

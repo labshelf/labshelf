@@ -43,7 +43,10 @@ async function init(): Promise<void> {
   findElement("title").classList.add("muted");
   showPopupView("loading");
   wire();
-  mountSourceBanner(findElement("sourceBanner"), { logger: createBrowserLogger(), onFolder: () => undefined });
+  mountSourceBanner(findElement("sourceBanner"), {
+    logger: createBrowserLogger(), onFolder: () => undefined,
+    openLibrary: () => { void sendRuntime({ type: "library.open" }).then(() => window.close()); },
+  });
 
   const [tab] = await bx.tabs.query({ active: true, currentWindow: true });
   // A PDF downloaded from any page, or opened from disk, can still match a paper; the offer then fills the popup.

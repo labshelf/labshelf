@@ -146,7 +146,7 @@ A `.qmd` note holds charts: function plots and data charts made in a fullscreen 
 
 ## Supporting choices and scope
 
-LabShelf is local-first. The user's own sync tool moves the library between devices; this is distinct from live collaboration. Without a folder, the browser stores the library internally and must explain that uninstalling the extension deletes that storage.
+LabShelf is local-first. The user's own sync tool moves the library between devices; this is distinct from live collaboration. The library always lives in a folder on the computer, never in the browser's storage: until the browser extension has one (picked in Chromium, served by LabShelf Helper or the VS Code and terminal bridge otherwise), the library page and the popup show only a prompt to choose it. Papers an older release kept in the browser are offered to move into the folder once it is chosen.
 
 The browser extension, VS Code extension and terminal app offer different ways into the work. Keep shared concepts and behavior consistent and check the host's capabilities when designing a flow.
 
