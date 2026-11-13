@@ -1,5 +1,5 @@
 /** The reader answers paperObjects through the host's port, and with "From paper is not available here." without one. */
-import { paperObjectHandlers } from "../../src/reader/paperObjectMessages";
+import { paperObjectHandlers } from "../../src/reader/noteMessages";
 import type { HostContext, ReaderHostPorts } from "../../src/reader/hostPorts";
 import type { PaperObjectsPort, PaperObjectsRequest } from "../../src/paperObjects/index";
 import type { HostToWebview } from "../../src/reader/protocol/index";
