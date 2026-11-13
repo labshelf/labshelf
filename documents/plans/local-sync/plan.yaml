@@ -73,7 +73,7 @@ sessions:
   - id: "7"
     file: sessions/7.yaml
     depends_on: ["4", "5"]
-    owns: [packages/core/src/ui/dom/widgets/floatingWindow.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/src/writing/consult/, packages/core/__tests__/ui/dom/, packages/core/__tests__/writing/consult/]
+    owns: [packages/core/src/ui/dom/widgets/floatingWindow.ts, packages/core/src/ui/dom/widgets/overlays.css, packages/core/src/ui/dom/widgets/index.ts, packages/core/src/writing/consult/, packages/core/src/writing/index.ts, packages/core/__tests__/ui/dom/, packages/core/__tests__/writing/consult/, documents/plans/local-sync/]
   - id: "8"
     file: sessions/8.yaml
     depends_on: ["7"]
