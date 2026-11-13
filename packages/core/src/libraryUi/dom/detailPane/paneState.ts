@@ -53,17 +53,20 @@ export function derivePaperView(ctx: UiContext, id: string): PaperView | null {
 
 export interface SectionOptions {
   count?: number;
+  /** Buttons at the end of the head row, outside the fold toggle. */
+  actions?: string;
 }
 
 /** A section, open unless the user folded it. */
 export function renderSection(id: string, title: string, body: string, collapsed: Record<string, boolean>, o: SectionOptions = {}): string {
   const closed = !!collapsed[id];
-  return `<div class="detail-section">` +
+  return `<div class="detail-section"><div class="sec-row">` +
     `<div class="sec-head${closed ? " collapsed" : ""}" data-sec="${id}" role="button" tabindex="0" aria-expanded="${!closed}">` +
       `<span class="sec-chevron">${renderIcon("chevron-down")}</span>` +
       `<span class="sec-title">${escapeHtml(title)}</span>` +
       (o.count ? `<span class="sec-count">${o.count}</span>` : "") +
     `</div>` +
+    (o.actions ? `<span class="sec-actions">${o.actions}</span>` : "") + `</div>` +
     `<div class="sec-body${closed ? " hidden" : ""}" data-sec-body="${id}">${body}</div></div>`;
 }
 

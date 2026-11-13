@@ -102,7 +102,7 @@ export function openTagMenu(ctx: UiContext, anchor: HTMLElement): void {
 /** The row of `tags`; `editing` shows the field in place of the Add tag button. */
 export function renderTagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
   const add = ctx.readOnly ? "" : editing ? tagInput(ctx)
-    : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${renderIcon("plus")}</button>`;
+    : `<button class="ls-icon-btn tag-add${tags.length ? "" : " labelled"}" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${renderIcon("plus")}${tags.length ? "" : "<span>Add tag</span>"}</button>`;
   return `<div class="tag-row">${tags.map((t) => chip(t, ctx.readOnly)).join("")}${add}</div>`;
 }
 
@@ -224,8 +224,8 @@ export function renderPaperHeadHtml(pane: PaneState, v: PaperView): string {
     (p.authors?.length ? bylineHtml(pane, p.authors) : "") +
     metaHtml(p, version) +
     (!p.hasPdf && p.pdfRequestedAt ? `<div class="detail-meta">${escapeHtml(formatPdfRequestedLine(p.pdfRequestedAt))}</div>` : "") +
-    `<div class="detail-toolbar">${primaryButtons(pane, v)}${renderCitationMenuButton()}</div>` +
-    `<div class="detail-status-row">${renderReadingStatusMenuButton(p.status)}${renderTagRowHtml(pane.ctx, p.tags ?? [], pane.tagEditing)}</div>` +
+    `<div class="detail-toolbar">${primaryButtons(pane, v)}${renderCitationMenuButton()}${renderReadingStatusMenuButton(p.status)}</div>` +
+    `<div class="detail-status-row">${renderTagRowHtml(pane.ctx, p.tags ?? [], pane.tagEditing)}</div>` +
     (pane.ctx.caps.textLayer ? renderTextLayerBanner(v) : "") +
   `</div>`;
 }

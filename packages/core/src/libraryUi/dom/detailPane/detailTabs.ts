@@ -11,7 +11,7 @@ import { formatRelativeTime, formatDateTime, formatShortDate } from "../../../ti
 import { ANNOTATION_COLORS, type Annotation, type PaperRecord } from "../../../model/index.js";
 import { compareAnnotations } from "../../../reader/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
-import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatAuthors, STATUS_LABEL } from "../../../library/index.js";
+import { PDF_FILE, formatBytes, formatAuthors, STATUS_LABEL } from "../../../library/index.js";
 import { formatCitation } from "../../copy.js";
 import { CITE_LABEL } from "../flows/index.js";
 import type { Backlink } from "../../../writing/index.js";
@@ -178,26 +178,24 @@ function abstractBody(pane: PaneState, v: PaperView): string {
   if (!summary) return renderMuted(pane.ctx.caps.fetchMetadata ? "No abstract. Fetch Metadata Online in the paper menu can often find one." : "No abstract.");
   const long = summary.length > ABSTRACT_CLAMP_AT;
   return `<div class="detail-abstract${long && !pane.abstractOpen ? " clamped" : ""}">${escapeHtml(summary)}</div>` +
-    `<div class="abstract-actions">` +
-      (long ? `<button class="link-btn more-link" type="button" data-action="toggleAbstract">${pane.abstractOpen ? "Show less" : "Show more"}</button>` : "") +
-      `<button class="link-btn more-link" type="button" data-action="copyAbstract">Copy</button></div>`;
+    (long ? `<div class="abstract-actions"><button class="link-btn more-link" type="button" data-action="toggleAbstract">${pane.abstractOpen ? "Show less" : "Show more"}</button></div>` : "");
 }
 
 function keywordsBody(keywords: readonly string[]): string {
   return `<div class="kw-list">${keywords.map((k) =>
-    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${escapeHtml(k)}" title="Find papers with this keyword">${escapeHtml(k)}</button>`).join(`<span class="kw-sep" aria-hidden="true">·</span>`)}</div>`;
+    `<button class="kw" type="button" data-action="searchKeyword" data-keyword="${escapeHtml(k)}" title="Find papers with this keyword">${escapeHtml(k)}</button>`).join("")}</div>`;
 }
 
 function linkLine(href: string, text: string, cls: string, label: string, copy: string): string {
   return `<span class="kv-line"><a class="link-btn ${cls}" href="${escapeHtml(href)}" target="_blank" rel="noopener" title="${escapeHtml(href)}">${escapeHtml(text)}</a>${copyBtn(copy, label)}</span>`;
 }
 
+// The year and folder are left out: the head already shows them, as the venue line and the crumb.
 function infoBody(v: PaperView): string {
   const p = v.p;
   let html = "";
   if (p.journal) html += renderField("Publication", escapeHtml(p.journal));
   if (p.publisher && p.publisher !== p.journal) html += renderField("Publisher", escapeHtml(p.publisher));
-  if (p.year) html += renderField("Year", escapeHtml(String(p.year)));
   if (p.volume || p.issue) html += renderField("Volume", escapeHtml([p.volume, p.issue ? `(${p.issue})` : ""].filter(Boolean).join(" ")));
   if (p.pages) html += renderField("Pages", escapeHtml(p.pages));
   if (p.doi) html += renderField("DOI", linkLine(`https://doi.org/${p.doi}`, p.doi, "mono", "DOI", p.doi));
@@ -205,7 +203,6 @@ function infoBody(v: PaperView): string {
   if (p.issn) html += renderField("ISSN", escapeHtml(p.issn));
   if (p.language) html += renderField("Language", escapeHtml(p.language));
   html += renderField("Cite key", `<span class="kv-line"><span class="mono">${escapeHtml(p.citeKey)}</span>${copyBtn(p.citeKey, "cite key")}</span>`);
-  html += renderField("Folder", `<button class="link-btn" type="button" data-action="goFolder" title="Open this folder">${escapeHtml((p.relFolder || LIBRARY_LABEL).replaceAll(" / ", " › "))}</button>`);
   return `<div class="kv-grid">${html}</div>`;
 }
 
@@ -219,7 +216,8 @@ function citeBody(pane: PaneState, v: PaperView): string {
 
 export function renderDetailsTabHtml(pane: PaneState, v: PaperView): string {
   const keywords = v.p.keywords ?? [];
-  return renderSection("abstract", "Abstract", abstractBody(pane, v), pane.collapsed) +
+  const copyAbstract = v.p.summary ? renderIconButton("copyAbstract", "copy", "Copy abstract") : "";
+  return renderSection("abstract", "Abstract", abstractBody(pane, v), pane.collapsed, { actions: copyAbstract }) +
     (keywords.length ? renderSection("keywords", "Keywords", keywordsBody(keywords), pane.collapsed, { count: keywords.length }) : "") +
     renderSection("info", "Info", infoBody(v), pane.collapsed) +
     citedInSectionHtml(pane, v.details?.citedIn) +

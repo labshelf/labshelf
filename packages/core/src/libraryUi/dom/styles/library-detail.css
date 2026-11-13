@@ -22,8 +22,8 @@
   font-weight: 400; font-size: calc(var(--ls-font-size) * 1.75); line-height: 1.25; letter-spacing: -.01em;
   user-select: text; overflow-wrap: anywhere; text-wrap: balance;
 }
-.ls-details .detail-byline { margin-top: var(--ls-space-5); font-size: var(--ls-text-lg); line-height: 1.5; color: var(--ls-desc); }
-.ls-details .detail-meta { margin-top: var(--ls-space-5); font-size: var(--ls-font-size); line-height: 1.55; color: var(--ls-desc); }
+.ls-details .detail-byline { margin-top: var(--ls-space-4); font-size: var(--ls-text-lg); line-height: 1.5; color: var(--ls-desc); }
+.ls-details .detail-meta { margin-top: var(--ls-space-2); font-size: var(--ls-font-size); line-height: 1.55; color: var(--ls-desc); }
 .ls-details .detail-meta + .detail-meta { margin-top: var(--ls-space-1); }
 .ls-library .version-chip {
   flex-shrink: 0; font-size: var(--ls-text-xs); line-height: 15px; padding: 0 var(--ls-space-3); border-radius: var(--ls-radius-pill);
@@ -40,23 +40,26 @@
 .ls-details .link-btn.url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
 .ls-details .detail-byline .link-btn { display: inline; }
 .ls-details .detail-meta .link-btn { vertical-align: bottom; }
-.ls-details .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-6); margin-top: calc(var(--ls-space-7) + var(--ls-space-2)); flex-wrap: wrap; }
+.ls-details .detail-toolbar { display: flex; align-items: center; gap: var(--ls-space-2); margin-top: calc(var(--ls-space-7) + var(--ls-space-2)); flex-wrap: wrap; }
 .ls-details .detail-toolbar .ls-btn, .ls-details .status-btn {
   height: calc(var(--ls-row-h) + var(--ls-space-4)); font-size: var(--ls-font-size); border-radius: var(--ls-radius);
 }
-/* The primary action reads as a link in the text column, as the other head actions do. */
+/* One row of actions: the primary one as a soft filled button flush with the text column, then Cite and the reading
+   status as ghost dropdowns. */
 .ls-details .detail-toolbar .ls-btn { padding: 0 var(--ls-space-4); background: none; border-color: transparent; }
-.ls-details .detail-toolbar .ls-btn:first-child { margin-left: calc(-1 * var(--ls-space-4)); }
 .ls-details .detail-toolbar .ls-btn:not(:disabled):hover { background: var(--ls-toolbar-hover); }
-.ls-details .open-btn { color: var(--ls-link); font-weight: 500; }
+.ls-details .detail-toolbar .ls-button-soft { padding: 0 var(--ls-space-6); margin-right: var(--ls-space-3); background: var(--ls-button-soft-bg); color: var(--ls-button-soft-fg); }
+.ls-details .detail-toolbar .ls-button-soft:not(:disabled):hover { background: var(--ls-button-soft-hover); }
+.ls-details .open-btn { font-weight: 500; }
 .ls-details .cite-btn, .ls-details .status-btn { color: var(--ls-fg); }
 .ls-details .detail-pane .ls-icon-btn { width: 26px; height: 26px; }
 .ls-details .detail-pane .ls-icon-btn svg { width: 15px; height: 15px; }
 
-/* Status and Cite open menus; a chevron marks them as dropdowns. Both are ghost buttons that align with the text column. */
-.ls-details .detail-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); margin-top: var(--ls-space-7); }
+/* Status and Cite open menus; a chevron marks them as dropdowns. Under a multi-selection the status button starts the tag
+   row and aligns with the text column. */
+.ls-details .detail-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ls-space-3) var(--ls-space-6); margin-top: var(--ls-space-5); }
 .ls-details .cite-btn, .ls-details .status-btn { padding: 0 var(--ls-space-4); }
-.ls-details .status-btn { margin-left: calc(-1 * var(--ls-space-4)); }
+.ls-details .detail-status-row .status-btn { margin-left: calc(-1 * var(--ls-space-4)); }
 .ls-details .status-btn svg:last-child, .ls-details .cite-btn svg:last-child { width: 12px; height: 12px; opacity: .6; }
 
 /* Tags: #tag links that search, an x that appears on hover or focus and removes, and Add tag that opens a field. */
@@ -64,6 +67,10 @@
 .ls-details .tag-chip { display: inline-flex; align-items: center; font-size: var(--ls-font-size); color: var(--ls-link); }
 .ls-details .tag-add { border-radius: var(--ls-radius-pill); color: var(--ls-desc); }
 .ls-details .detail-pane .tag-add { width: 20px; height: 20px; }
+.ls-details .detail-pane .tag-add.labelled {
+  width: auto; gap: var(--ls-space-2); padding: 0 var(--ls-space-3); margin-left: calc(-1 * var(--ls-space-3)); font-size: var(--ls-text-md);
+}
+.ls-details .detail-pane .tag-add.labelled svg { width: 12px; height: 12px; }
 .ls-details .tag-name { border: none; background: none; cursor: pointer; color: inherit; padding: 0; font: inherit; }
 .ls-details .tag-name:hover { text-decoration: underline; }
 .ls-details .tag-x {
