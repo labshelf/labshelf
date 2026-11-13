@@ -34,6 +34,7 @@ import { formatError } from "../../errors/index.js";
 import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
 import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
+import { createConsult, type Consult, type ConsultSetup } from "../../writing/consult/dom/createConsult.js";
 
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
@@ -112,6 +113,16 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   };
   if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
+}
+
+/**
+ * Builds the reader's consult over the host's setup (its windows float over the page) and shows its Consult button and chips in the toolbar.
+ * @returns the consult, which the caller disposes when the page goes away.
+ */
+export function mountReaderConsult(toolbar: Toolbar, setup: ConsultSetup): Consult {
+  const consult = createConsult({ ...setup, root: document.body, onError: (error) => console.warn("LabShelf reader: consult failed", error) });
+  toolbar.setConsult({ choose: consult.choose, windows: consult.windows });
+  return consult;
 }
 
 type ToolbarParts = Pick<ReaderUi, "sidebar" | "findBar" | "cheatsheet" | "viewModes" | "boxTool" | "equationTool" | "bubble" | "goToPage"> & { openCite: ((page?: number, quote?: string) => void) | undefined };

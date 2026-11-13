@@ -15,6 +15,9 @@ import { mountPaperView } from "./paperView.js";
 
 export interface ConsultOptions { client: ConsultClient; openFile: EditableFileOpener; pdfSource(bytes: ArrayBuffer): PdfDeckSource; root?: HTMLElement; windows?: FloatingWindows; onError?(error: unknown): void }
 
+/** What a host hands a surface (the reader) so it can build its own consult: the client, the file opener and the PDF source. */
+export type ConsultSetup = Pick<ConsultOptions, "client" | "openFile" | "pdfSource">;
+
 export interface Consult { readonly windows: FloatingWindows; choose(): void; open(entry: ConsultEntry): Promise<FloatingWindow>; footer(): Extension; dispose(): Promise<void> }
 
 /** What a window's body holds once mounted; closing the window destroys it. */

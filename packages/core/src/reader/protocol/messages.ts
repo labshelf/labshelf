@@ -15,6 +15,7 @@ import type { CiteRequest } from "../../writing/citations/index.js";
 import { isCiteRequest, type CiteReplyMessage } from "./citeProtocol.js";
 import type { PdfRegion } from "../geometry.js";
 import type { EquationOutcome } from "../hostPorts.js";
+import { isConsultOutbound, type ConsultInbound, type ConsultOutbound } from "../../writing/protocol.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
@@ -105,7 +106,11 @@ export type HostToWebview =
       hasEquationPort?: boolean;
       /** True only where the host has a paper-object port; absent means false and the note editors offer no From paper…. */
       hasPaperObjects?: boolean;
+      /** True only where the host has a consult port; absent means false and the toolbar shows no Consult. */
+      hasConsult?: true;
     }
+  /** The host's answers to the reader's consult windows, as the source editor receives them. */
+  | ConsultInbound
   /** `effectiveTheme` is the preset the chrome falls back to; a custom theme also sends its colours. */
   | { type: "applyTheme"; theme: ReaderThemeRef; effectiveTheme: EffectiveTheme; customTheme?: CustomReaderTheme }
   /** Replaces the list of custom themes, after this or another reader saved or deleted one. */
@@ -215,6 +220,8 @@ export type WebviewToHost =
   | { command: "paperObjects"; request: PaperObjectsRequest }
   /** A request of the cite popup about the paper the host bound to this reader; the host answers with a `cite.reply` of the same `requestId`. */
   | { command: "cite"; requestId: string; request: CiteRequest }
+  /** A message of the reader's consult windows; the host answers with ConsultInbound messages. */
+  | { command: "consult"; message: ConsultOutbound }
   /**
    * Extracts the LaTeX of a cropped equation; the reader makes `requestId` and the host echoes it in `equationResult`.
    * `png` is the crop in base64 (at most MAX_EQUATION_PNG_BYTES decoded); `text` is the page text under `rect`.
@@ -309,6 +316,8 @@ function checkNoteMessage(m: Record<string, unknown>): boolean | null {
       return isPaperObjectsRequest(m["request"]);
     case "cite":
       return isNonEmptyString(m["requestId"]) && isCiteRequest(m["request"]);
+    case "consult":
+      return isConsultOutbound(m["message"]);
     default:
       return null;
   }

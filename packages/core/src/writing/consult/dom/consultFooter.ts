@@ -43,11 +43,16 @@ function createPanel(options: ConsultFooterOptions): Panel {
     renderElement("span", { class: "ls-consult-chip-icon", "aria-hidden": "true", html: renderIcon("book") }),
     renderElement("span", { text: "Consult" }));
   consult.addEventListener("click", () => options.onConsult());
-  const chips = renderElement("div", { class: "ls-consult-chips" });
-  const render = (): void => chips.replaceChildren(...options.windows.list().map(renderChip));
+  const chips = renderConsultChips(options.windows);
+  return { dom: renderElement("div", { class: "ls-consult-footer" }, consult, chips.el), destroy: chips.destroy };
+}
+
+/** The strip of chips, one per open window, that follows the windows until `destroy`; shared by the footer and the reader toolbar. */
+export function renderConsultChips(windows: FloatingWindows): { el: HTMLElement; destroy(): void } {
+  const el = renderElement("div", { class: "ls-consult-chips" });
+  const render = (): void => el.replaceChildren(...windows.list().map(renderChip));
   render();
-  const off = options.windows.onChange(render);
-  return { dom: renderElement("div", { class: "ls-consult-footer" }, consult, chips), destroy: off };
+  return { el, destroy: windows.onChange(render) };
 }
 
 /** The footer as a CodeMirror extension; it stops listening to the windows when the view is destroyed. */

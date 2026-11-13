@@ -11,7 +11,8 @@ import {
   type ReaderContext, installTextLayerFocusGuard, HostBridge, type ReaderTransport, type PerfMarks, createPdfjsReader,
 } from "./readerSession.js";
 import { describeLoadError, PdfReloader, loadPdf, type PdfSourceHooks } from "./pdfLoader.js";
-import { DeferredHover, attachReaderHostMessages, buildReaderUi } from "./readerUi.js";
+import { DeferredHover, attachReaderHostMessages, buildReaderUi, mountReaderConsult, type ReaderUi } from "./readerUi.js";
+import type { ConsultSetup } from "../../writing/consult/dom/createConsult.js";
 import { ReadingPositionRestore, createActionRunner, attachExternalUrls, reportFirstRender } from "./startup.js";
 import { attachCitationClicks, PreviewCitations } from "./citations.js";
 import { ChangeMarks } from "./findMarks.js";
@@ -29,13 +30,15 @@ interface ReaderStartOptions {
   viewState?: QmdViewStatePort;
   /** Stores an AI provider key where the host's equation port reads it; given, the equation card asks for the key inline. Only a host in the same page passes it (the browser). */
   saveAiKey?: (provider: AiProvider, key: string) => Promise<void>;
+  /** Resolves the host's consult once the UI is built (never in a build preview); undefined or a rejection leaves the toolbar without Consult. */
+  consult?: () => Promise<ConsultSetup | undefined>;
 }
 
 /**
  * Builds the reader around the shell already in the document (READER_SHELL_BODY) and connects it to a host. Call once per document.
  * @returns resolves once the viewer is wired; on a load failure shows #error-msg and rejects so the host can log it.
  */
-export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey }: ReaderStartOptions): Promise<void> {
+export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey, consult }: ReaderStartOptions): Promise<void> {
   installPolyfills();
   installTextLayerFocusGuard();
 
@@ -53,7 +56,8 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey }
     const parts = createPdfjsReader(loaded.viewerLib, loaded.pdfDocument, container, findElement<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, viewState, saveAiKey, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
-    wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
+    const ui = wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
+    if (consult && !boot.preview) { attachConsult(ui, consult); }
   }
 
   return start().catch((err: unknown) => {
@@ -64,6 +68,15 @@ export function startReader({ boot, transport, perf, pdf, viewState, saveAiKey }
   });
 }
 
+/** Asks the host for its consult once and shows it in the toolbar; leaving the page closes its windows, which flushes and releases their files. */
+function attachConsult(ui: ReaderUi, resolve: () => Promise<ConsultSetup | undefined>): void {
+  void resolve().then((setup) => {
+    if (!setup) { return; }
+    const mounted = mountReaderConsult(ui.toolbar, setup);
+    window.addEventListener("pagehide", () => { void mounted.dispose(); }, { once: true });
+  }, (error: unknown) => console.warn("LabShelf reader: the consult is not available", error));
+}
+
 /** Connects the open document to its UI, keyboard and host traffic. */
 function wireReader(
   ctx: ReaderContext,
@@ -72,7 +85,7 @@ function wireReader(
   restore: ReadingPositionRestore,
   loadingMsg: HTMLElement,
   reloader: PdfReloader,
-): void {
+): ReaderUi {
   const ui = buildReaderUi(ctx, theme);
   const citations = new PreviewCitations(ctx);
   const hover = new DeferredHover(ctx, theme, citations);
@@ -82,4 +95,5 @@ function wireReader(
   attachCitationClicks(findElement("viewer"), ctx, citations);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
+  return ui;
 }

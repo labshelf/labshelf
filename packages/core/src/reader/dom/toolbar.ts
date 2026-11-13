@@ -9,6 +9,8 @@ import { formatZoomLabel } from "../viewNavigation.js";
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED } from "./pdfLoader.js";
 import type { Zoom } from "./navigation.js";
+import type { FloatingWindows } from "../../ui/dom/widgets/floatingWindow.js";
+import { renderConsultChips } from "../../writing/consult/dom/consultFooter.js";
 
 /**
  * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
@@ -47,8 +49,11 @@ function renderToolGroup(actions: ToolbarActions, tools: Map<string, HTMLButtonE
   return group;
 }
 
-/** The group at the toolbar's end: Find, Cite when the host offers it, Appearance, the shortcuts and the details toggle. */
-function renderEndGroup(mod: string, actions: ToolbarActions, detailsBtn: HTMLButtonElement): HTMLElement {
+/** What the toolbar's Consult entry drives: the chooser and the consult windows its chips list. */
+export interface ToolbarConsult { choose(): void; windows: FloatingWindows }
+
+/** The group at the toolbar's end: Consult and its chips (hidden until setConsult), Find, Cite when the host offers it, Appearance, the shortcuts and the details toggle. */
+function renderEndGroup(mod: string, actions: ToolbarActions, detailsBtn: HTMLButtonElement, consult: HTMLElement[]): HTMLElement {
   const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
   const appearanceBtn = renderReaderIconButton(renderIcon("text-size"), "Appearance");
   const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
@@ -60,7 +65,7 @@ function renderEndGroup(mod: string, actions: ToolbarActions, detailsBtn: HTMLBu
   if (citeBtn && citeInProject) {
     citeBtn.addEventListener("click", () => openQuoteMenu(citeBtn, { label: "Copy citation", icon: "copy", run: () => copyCitation?.() }, citeInProject, "below"));
   }
-  return renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, citeBtn, appearanceBtn, helpBtn, detailsBtn);
+  return renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, ...consult, findBtn, citeBtn, appearanceBtn, helpBtn, detailsBtn);
 }
 
 export class Toolbar {
@@ -72,6 +77,9 @@ export class Toolbar {
   private readonly equationBtn: HTMLButtonElement;
   private readonly detailsBtn: HTMLButtonElement;
   private readonly colorPicker: AnnotationColorPicker;
+  private readonly consultBtn: HTMLButtonElement;
+  private readonly consultChips: HTMLElement;
+  private consult: { value: ToolbarConsult; off(): void } | undefined;
   private readonly tools = new Map<string, HTMLButtonElement>();
   private state: AutohideState = initialAutohide;
   private lastScrollTop = 0;
@@ -99,6 +107,11 @@ export class Toolbar {
     this.detailsBtn = renderReaderIconButton(renderIcon("panel-right"), "Toggle LabShelf Details");
     this.detailsBtn.addEventListener("click", actions.toggleDetails);
     this.colorPicker = new AnnotationColorPicker(actions.selectColor);
+    this.consultBtn = renderReaderIconButton(renderIcon("book"), "Consult");
+    this.consultBtn.hidden = true;
+    this.consultBtn.addEventListener("click", () => this.consult?.value.choose());
+    this.consultChips = renderElement("div", { class: "rd-toolbar-consult-chips" });
+    this.consultChips.hidden = true;
     const editing = renderToolGroup(actions, this.tools, [this.boxBtn, this.equationBtn, this.colorPicker.el]);
     this.previousBtn.disabled = true;
     this.nextBtn.disabled = true;
@@ -112,7 +125,7 @@ export class Toolbar {
     this.el.append(
       renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.previousBtn, this.nextBtn),
       editing,
-      renderEndGroup(mod, actions, this.detailsBtn),
+      renderEndGroup(mod, actions, this.detailsBtn, [this.consultBtn, this.consultChips]),
     );
 
     this.bindAutohide();
@@ -163,6 +176,24 @@ export class Toolbar {
   }
 
   /**
+   * Shows the Consult button and one chip per open consult window, or hides them with `undefined`; the toolbar stays visible while a window is open.
+   */
+  setConsult(consult: ToolbarConsult | undefined): void {
+    this.consult?.off();
+    this.consult = undefined;
+    this.consultChips.replaceChildren();
+    if (consult) {
+      const chips = renderConsultChips(consult.windows);
+      this.consultChips.append(chips.el);
+      const offPin = consult.windows.onChange(() => this.step({ kind: "inputs" }));
+      this.consult = { value: consult, off: () => { chips.destroy(); offPin(); } };
+    }
+    this.consultBtn.hidden = !consult;
+    this.consultChips.hidden = !consult;
+    this.step({ kind: "inputs" });
+  }
+
+  /**
    * Pins the toolbar visible while the find bar is open.
    */
   setFindOpen(open: boolean): void {
@@ -210,7 +241,7 @@ export class Toolbar {
       scrollTop: this.container.scrollTop,
       pointerY: this.pointerY,
       focusWithin: this.el.contains(document.activeElement),
-      findOpen: this.findOpen,
+      findOpen: this.findOpen || (this.consult?.value.windows.list().length ?? 0) > 0,
       menuOpen: isPopoverOpen(),
     });
     const changed = next.visible !== this.state.visible;

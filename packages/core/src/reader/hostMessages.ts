@@ -219,6 +219,7 @@ export const sessionHandlers: Pick<
       ...(ports.runCell || ports.runMath ? { canRunCells: true } : {}),
       ...(ports.extractEquation ? { hasEquationPort: true } : {}),
       ...(ports.paperObjects ? { hasPaperObjects: true } : {}),
+      ...(ports.consult ? { hasConsult: true as const } : {}),
     });
   },
 
@@ -299,7 +300,7 @@ async function pushCustomThemes(ctx: HostContext): Promise<void> {
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "copyCitation" | "exportAnnotations" | "openExternalLink" | "cite"
+  "copyText" | "copyWithCitation" | "copyCitation" | "exportAnnotations" | "openExternalLink" | "cite" | "consult"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -335,6 +336,15 @@ export const shareHandlers: Pick<
       }
     }
     ports.post({ type: "cite.reply", requestId: msg.requestId, reply });
+  },
+
+  // The port answers through its own post, so a request that waits on the user (a Browse) does not hold this handler; without the port no reply exists to send.
+  consult: (ctx, msg) => {
+    const { ports } = ctx;
+    if (!ports.consult) { return; }
+    void ports.consult.handle(msg.message).catch((error: unknown) => {
+      void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id, command: "consult" });
+    });
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),

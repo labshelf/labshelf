@@ -10,6 +10,7 @@ import type { PaperObjectsPort } from "../paperObjects/types.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type { CiteReply, CiteRequest } from "../writing/citations/index.js";
+import type { ConsultOutbound } from "../writing/protocol.js";
 import type {
   CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId,
   EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
@@ -101,6 +102,8 @@ export interface ReaderHostPorts {
   extractEquation?: EquationPort;
   /** The library's papers for the note editor's From paper…; absent means the reader hides it and answers that it is not available. */
   paperObjects?: PaperObjectsPort;
+  /** Answers the reader's consult windows; absent means the reader shows no Consult. */
+  consult?: ReaderConsultPort;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;
@@ -158,3 +161,6 @@ export interface EquationRequest { paperId: string; pageNumber: number; rect: Pd
 export type EquationOutcome = { kind: 'latex'; latex: string; source: 'arxiv' | 'pix2tex' | 'ai'; provider?: string; number?: string; label?: string } | { kind: 'unavailable'; offers: { pix2tex: 'install' | 'installHelper' | 'none'; aiKey: boolean } } | { kind: 'failed'; reason: string }
 
 export interface EquationPort { extract(request: EquationRequest, onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<EquationOutcome>; installPix2tex?(onProgress: (message: string, fraction?: number) => void, signal?: AbortSignal): Promise<boolean>; addAiKey?(): Promise<boolean> }
+
+/** Answers the messages of the reader's consult windows; the host binds it to its own `post` and answers with ConsultInbound messages through it, and disposes it with the reader. */
+export interface ReaderConsultPort { handle(message: ConsultOutbound): Promise<void> }
