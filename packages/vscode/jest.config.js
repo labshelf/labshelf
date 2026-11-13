@@ -5,6 +5,7 @@ const path = require('path');
 const coreSubpathFiles = {
   '@labshelf/core/deckWorkspace': '../core/src/decks/dom/workspace/index.ts',
   '@labshelf/core/sourceEditor': '../core/src/writing/dom/sourceEditor/index.ts',
+  '@labshelf/core/consult': '../core/src/writing/consult/dom/index.ts',
 };
 const coreSubpaths = Object.fromEntries(
   Object.entries(coreSubpathFiles).map(([name, file]) => [name, [path.resolve(__dirname, file)]]),
