@@ -52,11 +52,10 @@ describe("bundle-backed webview pages", () => {
     expect(lastPanel().webview.html).toBe(page("Sync guide", "syncGuide", "syncGuide"));
   });
 
-  it("library list, sidebar and details", async () => {
+  it("library list and sidebar", async () => {
     const webview = vscode.window.createWebviewPanel("t", "t", 1, {}).webview;
     expect(await listPanelHtml(webview, extensionUri)).toBe(page("LabShelf", "library", "library", "qmd"));
     expect(await listPanelHtml(webview, extensionUri, "sidebar")).toBe(page("LabShelf", "library", "sidebar", "qmd"));
-    expect(await listPanelHtml(webview, extensionUri, "details")).toBe(page("LabShelf", "library", "details", "qmd"));
   });
 
   it("project search", async () => {
@@ -65,7 +64,7 @@ describe("bundle-backed webview pages", () => {
   });
 
   it("all projects", async () => {
-    AllProjectsPanel.open(extensionUri, {} as never, logger, { onSelect: jest.fn(), onActivate: jest.fn() }, jest.fn());
+    AllProjectsPanel.open(extensionUri, {} as never, logger, jest.fn());
     await flush();
     expect(lastPanel().webview.html).toBe(page("All projects", "projects", "projects"));
   });

@@ -10,7 +10,7 @@ export {
   closeOrLeave, openOrEnter, showRow, findFocusedChildRow, findFocusedRow, readPaperId, findPaperRow, listVisibleRows,
   createRowWindow, readRowHeight, type RowSlice, type RowViewport, type RowWindow,
 } from "./list/index.js";
-export { attachSash, buildFrame, type FrameOptions, type FrameSlots, type SashOptions } from "./libraryChrome.js";
+export { attachSash, buildFrame, renderDetailToggle, type FrameOptions, type FrameSlots, type SashOptions } from "./libraryChrome.js";
 export { renderIconButton, renderField, renderLoading, mountDetailPane, mountDetails, renderMuted, renderSection, renderTabBarHtml, type DetailsOptions, type TabSpec } from "./detailPane/index.js";
 export { attachHostMessages } from "./hostMessages.js";
 export { createUiCompositionRoot, type UiContext } from "./uiContext.js";

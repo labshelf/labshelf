@@ -1,5 +1,5 @@
 /**
- * Mounts the library UI once into a host element (frame, header, list, citation map) wired to a host
+ * Mounts the library UI once into a host element (frame, header, list, citation map, optional detail pane) wired to a host
  * through a transport. The host fills the optional sidebar slot with its own folder view.
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
@@ -12,7 +12,9 @@ import { attachDropZone } from "./paperDrag.js";
 import { askRemoveFolder, askCreateFolder, askRenameFolder } from "./flows/index.js";
 import { attachHostMessages } from "./hostMessages.js";
 import { mountPaperList } from "./list/index.js";
-import { buildFrame, mountListHeader } from "./libraryChrome.js";
+import { buildFrame, mountListHeader, renderDetailToggle } from "./libraryChrome.js";
+import { mountDetailPane } from "./detailPane/index.js";
+import { renderIcon } from "../../ui/index.js";
 import { createUiCompositionRoot, type UiContext } from "./uiContext.js";
 
 /** Posts `paper.selected` with every selected id, empty for none; returns the stop function. */
@@ -32,6 +34,8 @@ export interface LibraryUiOptions {
   labels: LibraryUiLabels;
   /** Adds a resizable sidebar slot left of the list. */
   withSidebar?: boolean;
+  /** Adds a resizable pane right of the list with the details of the selected papers. */
+  withDetail?: boolean;
   /** Shows the library for reading only: no Add button, tag editing or note editor; search stays. */
   readOnly?: boolean;
   /** Shows the sharing controls the host offers; absent or read-only shows none. */
@@ -52,6 +56,22 @@ export interface LibraryUi {
   dispose(): void;
 }
 
+const DETAIL_EMPTY = `<div class="ls-empty-icon">${renderIcon("book")}</div><div>Select a paper to see its details.</div>`;
+
+/** Fills the frame's detail column with the paper pane, which follows the list's selection, and the placeholder shown while nothing is selected. */
+function mountPaperDetail(ctx: UiContext, column: HTMLElement): () => void {
+  const pane = document.createElement("aside");
+  pane.className = "detail-pane";
+  pane.setAttribute("aria-label", "Paper details");
+  const empty = document.createElement("div");
+  empty.className = "detail-placeholder";
+  empty.innerHTML = DETAIL_EMPTY;
+  column.append(pane, empty);
+  const offEmpty = ctx.store.select((s) => s.selected.size === 0, (none) => { pane.hidden = none; empty.hidden = !none; });
+  const offPane = mountDetailPane(ctx, pane);
+  return () => { offEmpty(); offPane(); };
+}
+
 // Tells the host about every folder change after the first render; the host answers navigation of its own with `navigate`.
 function reportFolder(ctx: UiContext): () => void {
   let first = true;
@@ -65,11 +85,12 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const saved = options.prefs.load();
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
-  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, title: "Library" });
+  const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true, withDetail: options.withDetail ?? false, title: "Library" });
   const ctx = createUiCompositionRoot(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing, viewState: options.viewState });
   const offs = [
     attachHostMessages(ctx),
-    mountListHeader(ctx, frame.header, frame.heading),
+    mountListHeader(ctx, frame.header, frame.heading, frame.detail ? [renderDetailToggle(frame.root, prefs)] : []),
+    ...(frame.detail ? [mountPaperDetail(ctx, frame.detail)] : []),
     mountPaperList(ctx, frame.list),
     mountCitationMap(ctx, frame.citationMap!),
     reportFolder(ctx),

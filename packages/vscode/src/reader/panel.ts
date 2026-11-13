@@ -153,9 +153,6 @@ const openPanels = new Map<string, ReaderPanel>();
 
 export class ReaderPanel {
   private static activePanel: ReaderPanel | undefined;
-  private static readonly _activated = new vscode.EventEmitter<string>();
-  /** Fires the paper id when a reader tab becomes active; build previews are not papers to show. */
-  static readonly onDidActivatePaper = ReaderPanel._activated.event;
 
   private readonly _panel: vscode.WebviewPanel;
   private _disposables: vscode.Disposable[] = [];
@@ -230,10 +227,8 @@ export class ReaderPanel {
     this.controller = new ReaderHostController({
       paper,
       store: source.store,
-      toggleDetails: async (paperId) => {
-        ReaderPanel._activated.fire(paperId);
-        await vscode.commands.executeCommand("labshelf.details.toggle");
-      },
+      // The details live in the list tab's right pane, so the button shows the paper there.
+      toggleDetails: async (paperId) => { await vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
       post: (msg) => this._post(msg),
       getPrefs: getReaderPrefs,
       autoTheme: readAutoReaderTheme,
@@ -259,7 +254,7 @@ export class ReaderPanel {
       ...(source.preview ? { preview: source.preview } : {}),
     }, source.page !== undefined ? { page: source.page } : {});
     openPanels.set(source.key, this);
-    if (panel.active) { ReaderPanel.activePanel = this; if (!source.preview) { ReaderPanel._activated.fire(paper.id); } }
+    if (panel.active) { ReaderPanel.activePanel = this; }
 
     panel.webview.onDidReceiveMessage((msg: unknown) => { void this.controller.handle(msg); }, null, this._disposables);
 
@@ -310,7 +305,6 @@ export class ReaderPanel {
     this._panel.onDidChangeViewState((e) => {
       if (e.webviewPanel.active) {
         ReaderPanel.activePanel = this;
-        if (!source.preview) { ReaderPanel._activated.fire(source.paper.id); }
       } else if (ReaderPanel.activePanel === this) {
         ReaderPanel.activePanel = undefined;
       }

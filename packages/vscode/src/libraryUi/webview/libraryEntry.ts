@@ -20,4 +20,4 @@ import { createWebviewChannel } from "../../webview/index.js";
 import { libraryUiCapabilities, libraryUiLabels } from "./index.js";
 
 const { transport, prefs, sharing, viewState } = createWebviewChannel<UiToHost, HostToUi>();
-mountLibraryUi(findElement("root"), { transport, prefs, sharing, viewState, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+mountLibraryUi(findElement("root"), { transport, prefs, sharing, viewState, withDetail: true, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

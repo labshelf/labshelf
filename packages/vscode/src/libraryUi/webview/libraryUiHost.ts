@@ -1,4 +1,4 @@
-// Declares the capabilities and labels the VS Code webviews give the shared library UI and Details pane.
+// Declares the capabilities and labels the VS Code webviews give the shared library UI.
 import type { LibraryUiCapabilities, LibraryUiLabels } from "@labshelf/core";
 
 export const libraryUiCapabilities: LibraryUiCapabilities = {

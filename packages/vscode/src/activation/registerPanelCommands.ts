@@ -2,18 +2,13 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type ProjectLibraryPort, type LibraryUiHost, type PaperObjectsPort, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type EquationPort, type ILogger, type LibraryUiHost, type PaperObjectsPort, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
 import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, createVsCodeNoteFileIo, type ReaderCite } from "../reader/index.js";
 import {
-  DetailsView,
   ListWebviewPanel,
   createCitationMapPorts,
-  createLibraryPaths,
-  createLibraryRootNode,
-  registerDetailsView,
   type LibraryNode,
   type ListPanelDeps,
-  type SelectionSources,
 } from "../libraryUi/index.js";
 import { currentSourceFileComments, currentSourceFileSuggestions } from "../collab/index.js";
 import type { LibraryEvents } from "../library/index.js";
@@ -26,35 +21,6 @@ import { createAutosave, type DiskMerge } from "../localSync/index.js";
 import { createConsultFiles, createVscodeConsultIo } from "../consult/index.js";
 import { sourceAuthorities } from "../writing/sourceEditor/authorities.js";
 import type { HostAdapters } from "./hostAdapters.js";
-
-interface DetailsWiring {
-  context: vscode.ExtensionContext;
-  details: DetailsView;
-  currentServices: () => ActiveServices | null;
-  onDidChangeRoot: vscode.Event<unknown>;
-  adapters: Pick<HostAdapters, "paths">;
-  papersRootUri: () => vscode.Uri | null;
-  logger: ILogger;
-  /** Builds the list panel dependencies for the open library. */
-  listPanelDeps: (services: ActiveServices) => ListPanelDeps;
-}
-
-function wireDetailsSources({ context, details, currentServices, onDidChangeRoot, adapters, papersRootUri, listPanelDeps, logger }: DetailsWiring): void {
-  context.subscriptions.push(
-    details.onDidRequestFolder((ui) => {
-      const services = currentServices();
-      const root = papersRootUri()?.fsPath;
-      if (!services || !root) {
-        void logger.log("WARN", "details.folder", "Folder request dropped: no library is open", { folder: ui });
-        return;
-      }
-      const dir = createLibraryPaths(root, adapters.paths).fromUi(ui);
-      const node = dir === root ? createLibraryRootNode(dir) : { label: adapters.paths.basename(dir), dirPath: dir };
-      ListWebviewPanel.createOrShow(listPanelDeps(services), node);
-    }),
-    onDidChangeRoot(() => { void details.rebindLibrary(); }),
-  );
-}
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",
@@ -80,12 +46,7 @@ export interface PanelCommandsDeps {
   currentServices: () => ActiveServices | null;
   /** The open library's root folder, whose editor-prefs.json the source editor watches. */
   libraryRoot: () => vscode.Uri | undefined;
-  /** Fires when the library root changes, so the Details view serves the new library. */
-  onDidChangeRoot: vscode.Event<unknown>;
-  /** The All projects library port, which the Details view serves on its projects channel. */
-  projectLibrary: () => ProjectLibraryPort;
   logger: ILogger;
-  sources: SelectionSources;
   /** The reader's cite popup. */
   cite?: ReaderCite;
   /** Runs a note's code cell and installs the Python it needs; the list panel and the reader show Run only when present. */
@@ -106,15 +67,13 @@ export interface PanelCommandsDeps {
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
-  const { context, events, papersRootUri, folderHost, showFolderInSidebar, getAiService, adapters, projectBacklinks, sources } = deps;
+  const { context, events, papersRootUri, folderHost, showFolderInSidebar, getAiService, adapters, projectBacklinks } = deps;
   return {
     extensionUri: context.extensionUri, paperService: services.paperService, events, logger: services.logger, pathOps: adapters.paths,
     getPapersRoot: () => papersRootUri()?.fsPath ?? null,
     getSnapshot: () => services.library.snapshot, folders: createFolderActions(folderHost),
     citationMap: createCitationMapPorts(services),
     onDidNavigate: showFolderInSidebar,
-    onDidChangeSelection: sources.listSelected,
-    onDidActivate: sources.listActivated,
     textLayerJobs: { current: listTextLayerJobs, onDidChange: onTextLayerJobsChanged },
     loadSidecar: (paperId) => services.paperDataStore.load(paperId),
     paperNotes: services.paperNotesStore,
@@ -129,16 +88,13 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
   };
 }
 
-function registerOpenListTabCommand(deps: PanelCommandsDeps, details: DetailsView): void {
+function registerOpenListTabCommand(deps: PanelCommandsDeps): void {
   const { context, requireServices } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openListTab", async (node?: LibraryNode) => {
       const services = await requireServices();
       if (!services) { return; }
-      // Details opens with the list tab, but only when the tab opens, so a user who closes it while browsing keeps it closed.
-      // Revealing it first lets the new tab take the focus back.
-      if (!ListWebviewPanel.currentPanel) { await details.reveal(); }
       ListWebviewPanel.createOrShow(listPanelDeps(deps, services), node);
     }),
     // Run by the Library sidebar's paper rows only, so they have no package.json contribution.
@@ -227,13 +183,8 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
   );
 }
 
-/** @returns the Details view, so callers can show a target in it and route the folders it asks to open */
-export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
-  const details = registerDetailsView(deps.context, {
-    extensionUri: deps.context.extensionUri, projectLibrary: deps.projectLibrary, logger: deps.logger,
-    listDeps: () => { const services = deps.currentServices(); return services ? listPanelDeps(deps, services) : null; },
-  });
-  registerOpenListTabCommand(deps, details);
+export function registerPanelCommands(deps: PanelCommandsDeps): void {
+  registerOpenListTabCommand(deps);
   registerReaderPanelCommands(deps);
   registerSourceEditor(deps.context, {
     extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource, editorPrefs: deps.editorPrefs,
@@ -250,10 +201,4 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
     // Each project's review mode lives here, so it survives reopening a file.
     state: deps.context.workspaceState,
   });
-  deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
-  wireDetailsSources({
-    context: deps.context, details, currentServices: deps.currentServices, onDidChangeRoot: deps.onDidChangeRoot,
-    adapters: deps.adapters, papersRootUri: deps.papersRootUri, listPanelDeps: (services) => listPanelDeps(deps, services), logger: deps.logger,
-  });
-  return details;
 }

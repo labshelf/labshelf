@@ -16,4 +16,4 @@ import { findElement, mountAllProjects } from "@labshelf/core/dom";
 import type { AllProjectsToHost, HostToAllProjects } from "@labshelf/core";
 import { createWebviewChannel } from "../../webview/index.js";
 
-mountAllProjects(findElement("root"), createWebviewChannel<AllProjectsToHost, HostToAllProjects>());
+mountAllProjects(findElement("root"), { ...createWebviewChannel<AllProjectsToHost, HostToAllProjects>(), withDetail: true });

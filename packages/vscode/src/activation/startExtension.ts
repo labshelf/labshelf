@@ -1,9 +1,9 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { createPaperFiles, createSelectionHub, createLibraryLayout, notesText, type AiService, type PaperObjectsPort } from "@labshelf/core";
+import { createPaperFiles, createLibraryLayout, notesText, type AiService, type PaperObjectsPort } from "@labshelf/core";
 import { createReaderCite, createVsCodeNoteFileIo, type PdfjsLocator } from "../reader/index.js";
-import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
+import { ListWebviewPanel } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
   ConflictHandling, VscodeFileSystem, createLibraryEvents, moveLibraryRootToConfig, registerConflictCommand, registerSyncGuideCommand, resolveLibraryRoot, type LibraryEvents,
@@ -12,7 +12,6 @@ import type { ExtensionPlatform } from "./extensionPlatform.js";
 import type { HostAdapters } from "./hostAdapters.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
 import { LibraryRootController } from "./libraryRootController.js";
-import { openLibraryLogger } from "./openLibraryLogger.js";
 import { registerLibraryCommands } from "./registerLibraryCommands.js";
 import { registerLibrarySidebar } from "./registerLibrarySidebar.js";
 import { registerPanelCommands, type PanelCommandsDeps } from "./registerPanelCommands.js";
@@ -49,16 +48,14 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
 
   const folderHost = createFolderHost(requireServices, papersRootUri, () => refreshLibraryViews());
 
-  let details: DetailsView | undefined;
-  const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
-  const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
+  const writing = registerWritingView(context, controller, adapters, platform.registerWriting);
   const { noteSource, outputSources } = registerWritingLinks(context, controller, platform, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   const paperObjects = paperObjectsOf(context, controller, platform);
   const { editorPrefs, diskMerge } = registerLibraryEditors(context, controller, adapters, writing, cells, paperObjects);
   registerProjectChat(context, { session: writing.session, projects: writing.projects, logger: writing.logger });
-  const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells, paperObjects);
+  const spaces = registerSpaces(context, controller, adapters, writing, async id => { await vscode.commands.executeCommand("labshelf.revealPaper", id); }, cells, paperObjects);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
@@ -66,11 +63,11 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
 
   registerSettingsMenu(context, controller);
 
-  details = registerPanelCommands({
+  registerPanelCommands({
     ...cells,
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
-    editorPrefs, diskMerge, currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
+    editorPrefs, diskMerge, currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), logger: writing.logger,
     cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: { ...libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)), ...(outputSources ? { outputSources } : {}) },
     ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
@@ -182,12 +179,6 @@ function registerServiceCommands(
   registerAccountCommand(context, () => controller.currentServices()?.logger);
   registerCommands(context, requireServices);
   registerAiCommands(context, () => aiService);
-}
-
-async function revealPaperSelected(sources: ReturnType<typeof createSelectionSources>, id: string): Promise<void> {
-  await vscode.commands.executeCommand("labshelf.revealPaper", id);
-  sources.listSelected([id]);
-  sources.listActivated();
 }
 
 /** What the LabShelf editor reads from the open library: a paper's notes, the note links, and where its notes popover opens; and the platform's spelling dictionaries, if it has any. */

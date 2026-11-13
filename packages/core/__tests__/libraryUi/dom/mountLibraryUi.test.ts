@@ -38,6 +38,27 @@ describe("mountLibraryUi", () => {
     expect(t.container.querySelector(".detail-title")?.textContent).toBe("Root paper");
   });
 
+  it("shows a placeholder in the detail pane while no paper is selected", () => {
+    const t = mountForTest();
+    t.snapshot(library, [], folders);
+    const column = t.container.querySelector<HTMLElement>(".ls-library > .ls-tab-details")!;
+    expect(column.querySelector<HTMLElement>(".detail-placeholder")!.hidden).toBe(false);
+    expect(column.querySelector<HTMLElement>(".detail-pane")!.hidden).toBe(true);
+    t.host.post({ type: "select", id: "r" });
+    expect(column.querySelector<HTMLElement>(".detail-placeholder")!.hidden).toBe(true);
+    expect(column.querySelector<HTMLElement>(".detail-pane")!.hidden).toBe(false);
+  });
+
+  it("opens the detail pane at the saved width and collapsed state, and its header button toggles and saves it", () => {
+    const t = mountForTest({ detailWidth: 420, detailCollapsed: true });
+    const frame = t.container.querySelector<HTMLElement>(".ls-library")!;
+    expect(frame.querySelector<HTMLElement>(".ls-tab-details")!.style.width).toBe("420px");
+    expect(frame.classList.contains("detail-collapsed")).toBe(true);
+    t.click(".list-header .detail-toggle");
+    expect(frame.classList.contains("detail-collapsed")).toBe(false);
+    expect(t.saved.at(-1)).toEqual({ detailCollapsed: false });
+  });
+
   it("asks the host to attach a PDF inside the click itself", () => {
     const t = mountForTest({}, { attachPdf: true, findPdf: true });
     t.snapshot(library, [], folders);
