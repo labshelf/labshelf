@@ -1,0 +1,58 @@
+schema: brief/v1
+area: browser project notes tab (.qmd) bound to a local qmd replica with y-prosemirror
+question: "how noteFileTab/mountNoteFile could bind item by item to Replica.doc of kind qmd"
+sha: 98e577531
+reuse:
+  - {symbol: openLiveBinding, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "175-192", why: "pattern to copy: readPageLiveFiles() then live.open(fullPathOf(entry,path)), await replica.ready (on failure release and fall back to disk), returns persist = opened.flush and release. Undefined when live files are unavailable."}
+  - {symbol: readQmdDoc, path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "24-27", why: "Y.Doc layout: ONE top-level Y.Map 'qmd' holding 'order' Y.Array of keys (file order), 'attrs' Y.Map of strings (exact fence line of an item, or text of a loose segment), 'bodies' Y.Map of Y.XmlFragment keyed by item id (one fragment per item, absent for loose segments), 'tails' Y.Map of JSON {close,eol,trailing,unterminated}. Keys: item id, made unique with '~n' on repeats (keySegments 99-119); loose segments are 'loose-n'."}
+  - {symbol: readQmdDocText, path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "65-81", why: "doc to file text; skips duplicate keys and keys without attrs"}
+  - {symbol: setQmdDocText, path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "148-182", why: "item-level diff of external text into the doc in one transaction; REPLACES an item's fragment (new Y.XmlFragment) when its body changed (172-176)"}
+  - {symbol: collab option, path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "134-155", why: "existing y-prosemirror seam: QmdEditorOptions.collab = {fragment, awareness} (line 50); adds ySyncPlugin, yCursorPlugin, yUndoPlugin and Mod-z/y keymap instead of history()."}
+  - {symbol: isItemFileName, path: packages/core/src/library/conflicts/mergeBase.ts, lines: "6-9", why: "returns fileName.toLowerCase().endsWith('.qmd'): TRUE for both project notes (notes/*.qmd) and paper notes.qmd, and any other .qmd. deriveReplicaKind (replicaHub.ts 12-13) uses it. The browser isProjectNotePath (tabKinds.ts line 76) is stricter: startsWith('notes/') and endsWith('.qmd')."}
+edit:
+  - {path: packages/core/src/qmd/sharedQmdDoc.ts, lines: "24-27", why: "ADD exports. Today only readQmdDoc (raw Y.Map), readQmdDocText, setQmdDocText, mathematicaCell* are exported. No exported function lists items, gets an item's fragment (readParts at 29-44 is private) or observes item add/remove. Add listQmdItems(doc) in order (skip loose and duplicate keys like readQmdDocText 69-80) and observeQmdItems(doc, cb); export from packages/core/src/qmd/index.ts."}
+  - {path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "26-49", why: "NoteFileOptions takes text, save, create, flush only; no collab. Add an optional live option (doc or item provider, awareness optional)."}
+  - {path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "153-165", why: "mountItem passes body: item.body and onChange to mountQmdEditor; with a live doc pass collab {fragment, awareness} and keep onChange only for dirty/flush."}
+  - {path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "167-225", why: "mountEmpty creates the first item through options.create; render/updateFile remount all items when ids or order change. With a replica, mount/unmount per observed item and write new items as new keys."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "144-155", why: "collab.awareness is REQUIRED (yCursorPlugin). D2 says no awareness between own views: make it optional and skip yCursorPlugin when absent (cf. createCollabExtensions in packages/core/src/collab/dom/editorCollab.ts 130-165, presence optional)."}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "13-29", why: "NoteFileSource has read/editItem/addItem; add an optional live opener (full path of the note) built like openLiveBinding."}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "35-57", why: "createNoteWriter queues editItem(id, body) per item one after another, latest body per item wins, tab.setDirty(pending>0); create calls addItem. Replaced by the replica: the Y edit is the save, the disk writer persists, opened.flush() is the immediate persist."}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "70-112", why: "mountNoteFileTab reads once (source.read, line 84), mounts with text, save/create/flush from the writer, onBeforeClose(writer.flush) at 77, dispose flushes then destroys (105-111). With a replica: await ready, mount with the doc, onBeforeClose and dispose call opened.flush() then handle.destroy() then opened.release(); fall back to today's path when no live files."}
+  - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "79-105", why: "mountNote (project notes) builds the NoteFileSource with read: notes().read and editItem: notes().editItem, NO addItem; needs the full library path (projectFolderOf(ctx, projectId) plus path, as fullPathOf in sourceTab.ts) to open the live file."}
+  - {path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "126-142", why: "mountPaperNoteTab is the paper notes twin (store.read/editItem/addItem); binds the same way once the notes.qmd path is resolved through readCachedPaperRecord(paperId).path."}
+read:
+  - {path: packages/core/src/localSync/replicaHub.ts, lines: "9-28", why: "Replica {key, kind, doc, ready, text(), replace(text, origin), release()}; kind qmd uses readQmdDocText/setQmdDocText (line 83). Await ready before reading the doc; an unsynced doc reads as empty."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "183-190", why: "dispatchTransaction: onChange (debounced via CHANGE_DELAY_MS, 281-286) fires when tr.docChanged and not the EXTERNAL meta. ySync transactions from remote changes may not carry EXTERNAL; check before relying on onChange."}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "386-396", why: "handle.setBody (text mode) and flush (debouncer flush); with collab the fragment is the truth, not setBody."}
+  - {path: packages/browser/src/writing/source.ts, lines: "186-205", why: "SHARED projects: readSourceFileMode returns kind shared only when the share index entry kind is text; a shared qmd entry gives unresolved (read-only). tabKinds mountNote never consults the share. So no shared .qmd note is edited with y-prosemirror item by item in the browser today."}
+  - {path: packages/core/src/collab/session/sharedProject.ts, lines: "119-128", why: "only non-test consumer of readQmdDocText/setQmdDocText besides replicaHub and mergeFile: mirrors shared qmd doc and disk text; no item-level UI binding."}
+callers:
+  - {symbol: mountNoteFileTab, path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "92-105"}
+  - {symbol: mountNoteFileTab, path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "126-141"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/mountNoteFile.test.ts, covers: "mountNoteFile items, save/create/update/flush (no collab mode)"}
+  - {path: packages/core/__tests__/qmd/dom/qmdEditor.test.ts, covers: "mountQmdEditor; no collab test"}
+  - {path: packages/core/__tests__/qmd/sharedQmdDoc.test.ts, covers: "readQmdDocText/setQmdDocText round trip, item-level diff, duplicate keys"}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/noteFileTab.test.ts, covers: "note tabs and From paper only; jest.mock of core/dom, helper, storage, core (13-46); no save/read/flush coverage"}
+  - {path: packages/browser/__tests__/localSync/deckBinding.test.ts, covers: "fakeLive(initial) helper (9-31) building a replica+flush+release stub; template for a fake live file"}
+  - {path: packages/browser/__tests__/localSync/liveFiles.test.ts, covers: "FakeScheduler (19), FakeLock implements WriterLock (119)"}
+  - {path: packages/browser/__tests__/localSync/adapters.test.ts, covers: "FakeBroadcast (22), FakeLockManager (167)"}
+  - {path: packages/browser/__tests__/localSync/liveFileSystem.test.ts, covers: "fakeFs (8), fakeLive (32)"}
+contracts: ["collaboration#docs", "plan local-sync D2, D4, D5"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/sharedQmdDoc.test.ts"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom/mountNoteFile.test.ts"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/libraryUi/editorArea/noteFileTab.test.ts"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/localSync"
+risks:
+  - "mountNoteFile has NO collab option and nothing mounts a shared .qmd note item by item; only QmdEditorOptions.collab (fragment plus REQUIRED awareness) exists, untested. mathCheckPlugin.test.ts line 8 says a collab mount cannot be built under jsdom (ySyncPlugin dispatches during EditorView construction), so test at doc level or with a fake mountQmdEditor."
+  - "Awareness is required by qmdEditor's collab type; make it optional (skip yCursorPlugin) as session 3 did for createCollabExtensions."
+  - "No exported item list/get-fragment/observe API in sharedQmdDoc.ts; bodies.get(key) is undefined for loose segments and before sync. setQmdDocText REPLACES an item's fragment when an external text changes its body, so a view bound to the old fragment edits a detached one: rebind the item's editor on every bodies change for its key, not only on order change."
+  - "Item metadata (fence line with author/created, close line, eol/trailing/unterminated) lives OUTSIDE fragments in attrs/tails; header meta must be parsed from attrs.get(key); file text reads correctly only via readQmdDocText."
+  - "Item add/remove while bound: order/attrs/bodies/tails are separate maps; a key in order without attrs is skipped by readQmdDocText (73), so the UI list must filter the same way. Today updateFile remounts ALL items when ids or order change (mountNoteFile.ts 214-217), losing carets of the others: prefer per-item mount/unmount."
+  - "Save semantics: today save per item goes to ProjectNotesStore.editItem (queued, latest wins). With a replica the Y edit is the save and DiskWriters persists after 300 ms; opened.flush() is immediate. The replica gives no dirty signal: set on onChange, clear after flush. onBeforeClose and dispose must flush then release."
+  - "Empty file with create: mountEmpty calls create(newItemId(), body); with a replica this must add keys to the doc (replica.replace(serializeItemFile(...)) is simplest). Project notes pass no addItem so they show 'is empty' without an editor."
+  - "Cell runs write output back with editor.setBody(next) plus change() (mountNoteFile.ts 126-142); with collab that must be a ProseMirror transaction on the bound view. bodyOf, cellsAbove and otherBodies read text snapshots (s.latest, s.items) that go stale once the fragment is the truth."
+  - "isItemFileName is true for any .qmd (comments.qmd too); only tabKinds isProjectNotePath restricts the note tab to notes/*.qmd. openLiveBinding in sourceTab.ts uses doc.getText('content') regardless of kind: for a qmd-kind replica that Y.Text is unrelated, so verify sourceTab never live-binds a .qmd."
+  - "VS Code notesEditorEntry also uses mountNoteFile (line 58); the new option must leave the text path untouched."
+  - "Other writers (PaperNotesStore, ProjectNotesStore) keep calling LibraryFileSystem; per D5 their writes become replica.replace(text), which setQmdDocText applies item by item, so open item editors see a body change as a replaced fragment (see rebind risk)."

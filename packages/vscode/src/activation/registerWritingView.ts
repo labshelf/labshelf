@@ -201,6 +201,12 @@ function registerBuildAndPreviewCommands(
   }));
   context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
+  registerPreviewAndEditorCommands(parts, previews);
+  return { session, previews, recompile };
+}
+
+function registerPreviewAndEditorCommands(parts: WritingParts, previews: BuildPreviews): void {
+  const { context, host, projects, activeSource } = parts;
   registerShowPreview({ context, projects, previews, activeSource });
   registerShowInPreview({ context, projects, previews, activeSource });
   registerEditorActions({ context, host, activeSource });
@@ -209,7 +215,6 @@ function registerBuildAndPreviewCommands(
   registerPickCompiler({ context, host, projects, activeSource });
   registerCompilerStatusBar(context, projects, activeSource);
   registerLatexWorkshopNotice({ context, host, projects });
-  return { session, previews, recompile };
 }
 
 function registerEditingSupport(parts: WritingParts): void {

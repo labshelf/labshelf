@@ -8,7 +8,7 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, runScopeHandlers } from "@codemirror/view";
 import { DEFAULT_TYPING_HELPERS } from "../../../../src/writing/typing/index";
 import { createTypingSwitch } from "../../../../src/writing/dom/sourceEditor/typingHelpers";
-import { openTypingHelpersDialog } from "../../../../src/writing/dom/sourceEditor/typingHelpersDialog";
+import { openTypingHelpersDialog } from "../../../../src/writing/dom/sourceEditor/editor";
 import { renderSourceMoreEntries } from "../../../../src/writing/dom/sourceEditor/toolbar";
 
 function mount(doc: string, cursor: number, language: "latex" | "typst" = "latex", readOnly = false) {

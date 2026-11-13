@@ -1,22 +1,23 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import {
-  PDF_FILE, PaperNotesStore, PaperSidecarStore, createLoopbackTransport, createProjectNotesStore, deriveCodeLanguage, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
-  type HostToSearch, type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry, type SearchToHost, type SearchTransport, type SelectionPopupPrefs, type TypingHelpers,
+  createLoopbackTransport, formatError,
+  type HostToSearch, type ProjectEntry, type SearchToHost, type SearchTransport, type SelectionPopupPrefs, type TypingHelpers,
 } from "@labshelf/core";
 import { mountFloatingSearch, renderElement, runShareProjectDialog, showToast, type FloatingSearch } from "@labshelf/core/dom";
 import type { createDeckWorkspaceFeed } from "@labshelf/core/deckWorkspace";
-import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type CodeFileSource, type DeckToolHooks, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
-import { browserDictionaryStore, createPaperNotesPort, createSidecarPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
+import { createDeckToolbarGroups, readDeckKindOf, renderSourceMoreEntries, renderSourceToolbar, reviewModeDropdown, type DeckToolHooks, type SourceEditor, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import type { Consult } from "@labshelf/core/consult";
+import { createBrowserConsult } from "../../consult/consultHost";
+import type { LiveFiles } from "../../localSync/liveFiles";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import {
-  addProjectUpdateEvent, createLibraryCitationWiring, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
-  type LibraryCitationWiring, type SourceFileMode,
+  createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, mountSearchHost, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, showInOpenEditor, splitSourceActions,
+  type SourceFileMode,
 } from "../../writing";
 import { editorPrefsOf } from "../../writing/editorPrefs";
 import { followProjectFileChanges, warnFileChangeConflict } from "../../writing/fileChanges";
-import { bx, createPdfWorker, extensionPdfAssets } from "../../platform";
-import { getBrowserCellPorts } from "../../helper";
-import { createBrowserOutputSources, createLibraryOutputFiles } from "../../writing/outputSources";
 import { mountWorkspaceInTab } from "./deckWorkspaceTab";
+import { createReviewModeState, editorDeps, fullPathOf, type ReviewModeState } from "./sourceEditorDeps";
 import { findSharedProject } from "../projectChat";
 import { TAB_KINDS, type TabContext, type TabModule } from "./tabKinds";
 import { openDeckAudienceTab } from "./workspace";
@@ -25,157 +26,41 @@ type DeckFeed = ReturnType<typeof createDeckWorkspaceFeed>;
 
 const MODULE = "tabs.source";
 
-/** The review mode a project's source tabs open in, kept per project so it survives reopening a tab; Editing until the user picks Reviewing. */
-interface ReviewModeState {
-  get(): ReviewMode;
-  /** Stores the mode; true when it differs from the stored one. */
-  set(mode: ReviewMode): boolean;
-  /** Runs when the editor reports a mode picked on its side. */
-  onMode(mode: ReviewMode): void;
-}
+/** A live file this tab holds, and the collab the editor is mounted over; `release` lets the file go. */
+interface LiveBinding { collab: NonNullable<SourceEditorDeps["collab"]>; release: () => Promise<void> }
 
-function createReviewModeState(projectId: string, logger: ILogger, changed: () => void): ReviewModeState {
-  const key = `labshelf.reviewMode.${projectId}`;
-  let current: ReviewMode = "editing";
-  // PLATFORM: localStorage throws when the browser blocks storage; the mode then lasts for this tab only.
-  try { if (window.localStorage.getItem(key) === "reviewing") current = "reviewing"; } catch (error) { void logger.error(MODULE, error, { action: "readReviewMode", projectId }); }
-  const set = (mode: ReviewMode): boolean => {
-    if (mode === current) return false;
-    current = mode;
-    try { window.localStorage.setItem(key, mode); } catch (error) { void logger.error(MODULE, error, { action: "storeReviewMode", projectId }); }
-    return true;
-  };
-  return { get: () => current, set, onMode: (mode) => { if (set(mode)) changed(); } };
-}
+/** The page's live files; undefined when the page cannot start them, and it then edits the files as it did before. */
+const readLiveFiles = ({ logger }: TabContext): Promise<LiveFiles | undefined> =>
+  Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error(MODULE, error, { action: "readLiveFiles", message: formatError(error) }); return undefined; });
 
-/** The project's files; `saved` runs after each write, and a failure of it is logged without failing the save. */
-function projectFiles(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntry, saved: LibraryCitationWiring["reanchor"] | undefined): SourceFileAccess {
-  const full = (path: string): string => posixPathOps.join(entry.folder, path);
-  return {
-    list: () => listProjectFiles({ fs, paths: posixPathOps }, entry.folder),
-    read: (path) => fs.readText(full(path)),
-    write: async (path, text) => {
-      await fs.writeText(full(path), text);
-      await saved?.(path, text).catch((error: unknown) => void logger.error(MODULE, error, { action: "reanchorCitations", path, message: formatError(error) }));
-    },
-  };
-}
-
-/** The code files Insert code lists and the listings link to: a path climbing out of the library folder is unreadable here, so its listing gets no mark; a missing file is undefined. */
-function codeLinkSource(fs: LibraryFileSystem, entry: ProjectEntry): CodeFileSource {
-  const inLibrary = (path: string): string => path.split("/").reduce((segments, segment) => {
-    if (segment === "..") { if (segments.pop() === undefined) throw new Error("outside the library folder"); } else if (segment !== "" && segment !== ".") segments.push(segment);
-    return segments;
-  }, entry.folder.split("/").filter((segment) => segment !== "" && segment !== ".")).join("/");
-  return {
-    list: async () => (await listProjectFiles({ fs, paths: posixPathOps }, entry.folder)).filter((path) => !path.endsWith(".tex") && deriveCodeLanguage(path) !== undefined),
-    read: async (path) => { const target = inLibrary(path); return (await fs.exists(target)) ? await fs.readText(target) : undefined; },
-  };
-}
-
-/** The notes "Insert from note" reads: the project's notes and the notes of the papers its sources cite; a reader that fails logs and answers empty, so one bad note never empties the picker. */
-function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntry & { kind: "ready" }): NoteInsertSource {
-  const store = createProjectNotesStore(createProjectNoteFiles(fs, async () => entry.folder), logger);
-  const paperNotes = createPaperNotesPort(fs);
-  const projectId = entry.settings.id;
-  const safe = async <T>(action: string, fallback: T, read: () => Promise<T>): Promise<T> => {
-    try {
-      return await read();
-    } catch (error) {
-      void logger.error(MODULE, error, { action, projectId, message: formatError(error) });
-      return fallback;
-    }
-  };
-  return {
-    listProjectNotes: () => safe("listProjectNotes", [], () => store.list(projectId)),
-    readProjectNote: (path) => safe("readProjectNote", undefined, async () => (await store.read(projectId, path)) ?? undefined),
-    listCitedPaperIds: () => safe("listCitedPaperIds", [], async () => {
-      const keys = await listProjectCiteKeys({ fs, paths: posixPathOps }, entry.folder, entry.settings.format);
-      const byKey = derivePapersByCiteKey(await listCachedPaperRecords());
-      return [...new Set(keys.flatMap((key) => byKey.get(key)?.id ?? []))];
-    }),
-    readPaperNote: (paperId) => safe("readPaperNote", undefined, async () => (await paperNotes.read(paperId)) ?? undefined),
-  };
-}
-
-/** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
-function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState, feed: DeckFeed | undefined,
-  flush: () => Promise<boolean>,
-): SourceEditorDeps {
-  const { helperProject, comments, sharing, suggestions } = project();
-  const { projectId, path } = file;
-  const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
-  const citations = entry.kind === "ready" ? createLibraryCitationWiring({ fs, logger, entry, flush, papers: listCachedPaperRecords }) : undefined;
-  return {
-    projectId, path, files: projectFiles(fs, logger, entry, readOnly ? undefined : citations?.reanchor), papers: listCachedPaperRecords,
-    helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
-    ...(feed ? { extensions: [feed.extension] } : {}),
-    openTab: workspace.openTab, logger, onDirty: tab.setDirty,
-    mathPreview: {
-      enabled: prefs.mathPreview(),
-      disable: () => {
-        prefs.saveMathPreview(false);
-        showToast("Math preview is off. Turn it back on with the Math preview button in the editor's footer.", "info");
-      },
-    },
-    proofing: {
-      store: browserDictionaryStore(logger),
-      enabled: prefs.spelling(),
-      disable: () => {
-        prefs.saveSpelling(false);
-        showToast("Spelling is off. Turn it back on with the Spelling button in the editor's footer.", "info");
-      },
-    },
-    notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
-    // The highlights of a cited paper, from the sidecar the reader writes them to.
-    highlightsOf: (paperId) => new PaperSidecarStore(createSidecarPort(fs), { logger }).getAnnotations(paperId),
-    // The paper's PDF for the cite popup and the page thumbnail of a page citation; the reader's own file and worker.
-    pdfOf: (paper) => ({
-      assets: extensionPdfAssets(), createWorker: createPdfWorker,
-      // pdf.js transfers the buffer to its worker, so it gets a private copy of exactly the file's bytes.
-      readBytes: async () => (await fs.readFile(`${paper.path}/${PDF_FILE}`)).slice().buffer,
-    }),
-    ...(citations ? { scopesOf: citations.scopesOf } : {}),
-    ...(!readOnly && citations ? { libraryCitation: citations.libraryCitation } : {}),
-    // Opens the paper's reader as a tab, at the cited page when the tab is not open yet.
-    openPaper: (paperId, page) => workspace.openTab("paper", { paperId, ...(page === undefined ? {} : { page: String(page) }) }),
-    // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
-    openNotes: (paperId) => {
-      prefs.save({ detailTab: "notes" });
-      selection.publish("source-notes", { kind: "paper", ids: [paperId] });
-      selection.activate("source-notes");
-    },
-    ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
-    ...(!readOnly && entry.kind === "ready" ? {
-      noteLinks: noteLinkSource(fs, logger, entry), codeLinks: codeLinkSource(fs, entry),
-      outputLinks: {
-        files: createLibraryOutputFiles(fs, entry.folder), projectId,
-        sources: createBrowserOutputSources({
-          area: bx.storage.local, projectId, logger, helper: getBrowserCellPorts(logger).helper,
-          userName: async () => sharing.shares.name() || undefined,
-        }),
-      },
-    } : {}),
-    ...(readOnly ? { readOnly: true } : {
-      comments: {
-        subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
-        add: (range, text) => comments.addComment(projectId, path, range, text),
-        open: () => workspace.openTab("comments", { projectId }, 1),
-      },
-      review: { author: () => sharing.shares.name(), mode: review.get(), suggestions: suggestions.suggestionsFor(projectId, path), onMode: review.onMode },
-    }),
-    onSaved: () => void addProjectUpdateEvent({ fs, logger }, { id: projectId, folder: entry.folder }),
-  };
+/** Opens a local file as a live file, so every tab of it edits one replica; undefined when the replica fails, and the editor then reads the disk. */
+async function openLiveBinding({ logger }: TabContext, live: LiveFiles, entry: ProjectEntry, file: { projectId: string; path: string }): Promise<LiveBinding | undefined> {
+  const opened = live.open(fullPathOf(entry, file.path));
+  try {
+    await opened.replica.ready;
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "openLiveFile", ...file, message: formatError(error) });
+    await opened.release();
+    return undefined;
+  }
+  return { collab: { text: opened.replica.doc.getText("content"), persist: () => opened.flush() }, release: () => opened.release() };
 }
 
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
   body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean; inserts: SourceInserts }, review: ReviewModeState, disposed: () => boolean,
-): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void } | undefined> {
+): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode; feed: DeckFeed | undefined; stopTyping: () => void; release: () => Promise<void> } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
   const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
+  let live: LiveBinding | undefined;
+  let consult: Consult | undefined;
+  // The consult windows close before the tab lets its own replica go, which a window of the same file shares.
+  const release = async (): Promise<void> => {
+    await consult?.dispose();
+    await live?.release();
+  };
   try {
     const loadingModule = loadSourceEditor();
     const entry = await findProject(fs, logger, session.current(), projectId);
@@ -183,21 +68,28 @@ async function loadEditor(
     if (disposed()) return undefined;
     const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
+    const pageLive = await readLiveFiles(context);
+    live = mode.kind === "local" && pageLive ? await openLiveBinding(context, pageLive, entry, { projectId, path }) : undefined;
+    if (disposed()) { await release(); return undefined; }
     // A talk's or poster's workspace hears the editor's text and cursor through this feed.
     const feed = /\.(tex|typ)$/.test(path) ? (await import("@labshelf/core/deckWorkspace")).createDeckWorkspaceFeed() : undefined;
     // The typing helpers start as the library file has them and follow it while the editor is open.
     const prefs = editorPrefsOf(fs, logger);
     const typing = await prefs.typing();
     const selectionPopup = await prefs.selectionPopup();
-    if (disposed()) return undefined;
+    if (disposed()) { await release(); return undefined; }
+    // Without the page's replica hub there is nothing for a consult window to share, so the editor shows no consult footer.
+    consult = pageLive ? createBrowserConsult({ fs, logger, live: pageLive, projectId }) : undefined;
     // The bibliography update after a citation saves the file through the editor that is mounted by then.
     let mounted: SourceEditor | undefined;
-    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false), typing, selectionPopup, inserts: file.inserts });
+    const collab = mode.kind === "shared" ? mode.collab : live?.collab;
+    const editor = await mountSourceEditor(body, { ...editorDeps(context, entry, { projectId, path }, mode, review, feed, async () => (await mounted?.flush()) ?? false, collab, consult), typing, selectionPopup, inserts: file.inserts });
     mounted = editor;
     loading.remove();
-    if (disposed()) { void editor.dispose(); return undefined; }
-    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor) };
+    if (disposed()) { void editor.dispose().then(release); return undefined; }
+    return { editor, entry, mode, feed, stopTyping: stopFollowingPrefs(prefs, editor), release };
   } catch (error) {
+    void release();
     loading.textContent = `Could not open ${path}.`;
     void logger.error(MODULE, error, { action: "openSource", projectId, path });
     return undefined;
@@ -236,6 +128,8 @@ interface SourceTabState {
   mode: SourceFileMode | undefined;
   /** Ends the editor's following of the typing helpers and the selection popup in editor-prefs.json. */
   stopTyping?: (() => void) | undefined;
+  /** Closes the tab's consult windows, then lets the file's live file go; runs after the editor that edits its replica is disposed. */
+  release?: (() => Promise<void>) | undefined;
   /** The project search floating over the editor; its host side starts on the first open. */
   search?: FloatingSearch;
   searchHost?: { dispose(): void };
@@ -302,14 +196,37 @@ function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, pa
   };
 }
 
+/** Mounts the talk's or poster's workspace beside the editor; `onMounted` gets the function that unmounts it. */
+function mountDeckWorkspace(
+  context: TabContext, { host, body, opened, file }: { host: HTMLElement; body: HTMLElement; opened: OpenedEditor; file: { projectId: string; path: string } }, onMounted: (stop: () => void) => void,
+): void {
+  if (!opened.feed) return;
+  void mountWorkspaceInTab({ host, body, context, entry: opened.entry, file, editor: opened.editor, subscribe: opened.feed.subscribe, hooks: deckHooks(context, file) })
+    .then((workspace) => { if (workspace) onMounted(() => workspace.dispose()); })
+    .catch((error: unknown) => void context.logger.error(MODULE, error, { action: "mountWorkspace", ...file }));
+}
+
+type OpenedEditor = NonNullable<Awaited<ReturnType<typeof loadEditor>>>;
+
+/** The tab takes over what `loadEditor` opened. */
+function adoptEditor(state: SourceTabState, opened: OpenedEditor): void {
+  state.editor = opened.editor;
+  state.stopTyping = opened.stopTyping;
+  state.release = opened.release;
+  state.mode = opened.mode;
+  // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
+  state.loaded = isReadOnly(opened.mode) ? undefined : opened.entry;
+}
+
 function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array<() => void>): void {
   state.disposed = true;
   state.stopTyping?.();
   state.search?.dispose();
   state.searchHost?.dispose();
   for (const stop of stops) stop();
-  const { editor } = state;
-  if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
+  const { editor, release } = state;
+  state.release = undefined;
+  if (editor) void editor.dispose().then(() => release?.()).then(() => body.remove()); else { void release?.(); body.remove(); }
 }
 
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
@@ -323,8 +240,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const folder = projectFolderOf(context, projectId);
   if (folder !== undefined) state.search = mountFloatingSearch(host, () => connectSearch(context, { id: projectId, folder }, state));
   const { groups, actions, previewToggle, inserts } = sourceToolbarGroups(context, { projectId, path }, state);
-  const shared = (): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
-  const toolbar = createToolbarSlot(groups, { shared, trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined), saveSelectionPopup: (next) => void editorPrefsOf(context.fs, logger).setSelectionPopup(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
+  const toolbar = createToolbarSlot(groups, { shared: () => isSharedProject(context, projectId), trailing: () => trailingButtons(context, projectId), edge: previewToggle.button, saveSpelling: (on) => context.prefs.saveSpelling(on), saveTyping: (next) => void editorPrefsOf(context.fs, logger).setTyping(next).catch(() => undefined), saveSelectionPopup: (next) => void editorPrefsOf(context.fs, logger).setSelectionPopup(next).catch(() => undefined) }, () => review, () => state.editor, { path, hooks: deckHooks(context, { projectId, path }) });
   const stopPreviewToggle = previewToggle.follow(() => toolbar.redraw());
   const stopChatToggle = followProjectChat(context, projectId, () => toolbar.redraw());
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
@@ -334,16 +250,10 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     void loadEditor(body, context, { projectId, path, retried, inserts }, review, () => state.disposed).then((opened) => {
       if (!opened) return;
       const readOnly = isReadOnly(opened.mode);
-      state.editor = opened.editor;
-      state.stopTyping = opened.stopTyping;
-      state.mode = opened.mode;
-      // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
-      state.loaded = readOnly ? undefined : opened.entry;
+      adoptEditor(state, opened);
       if (!readOnly) toolbar.show(true);
       if (!readOnly && opened.feed && readDeckKindOf(path, opened.editor.deck.text())) {
-        void mountWorkspaceInTab({ host, body, context, entry: opened.entry, file: { projectId, path }, editor: opened.editor, subscribe: opened.feed.subscribe, hooks: deckHooks(context, { projectId, path }) })
-          .then((workspace) => { if (workspace) stopWorkspace = () => workspace.dispose(); })
-          .catch((error: unknown) => void logger.error(MODULE, error, { action: "mountWorkspace", projectId, path }));
+        mountDeckWorkspace(context, { host, body, opened, file: { projectId, path } }, (stop) => { stopWorkspace = stop; });
       }
       prependNotice(body, opened.mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
@@ -353,8 +263,10 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     const previous = state.editor;
     state.stopTyping?.();
     state.stopTyping = undefined;
-    state.editor = state.loaded = state.mode = undefined;
+    const release = state.release;
+    state.editor = state.loaded = state.mode = state.release = undefined;
     await previous?.dispose();
+    await release?.();
     if (state.disposed) return;
     body.replaceChildren(toolbar.reset());
     open(retried);
@@ -418,19 +330,21 @@ function connectSearch({ fs, logger, workspace }: TabContext, project: { id: str
   return ui;
 }
 
+const isSharedProject = (context: TabContext, projectId: string): boolean => findSharedProject(context.project().sharing, projectId) !== undefined;
+
 /** The right end of the editor's toolbar: the Project chat icon while the project is shared (D2), then Share as in Overleaf's header while the page offers project sharing. */
 function trailingButtons(context: TabContext, projectId: string): SourceToolbarButton[] {
   if (!projectId) return [];
-  const shared = findSharedProject(context.project().sharing, projectId) !== undefined;
+  const shared = isSharedProject(context, projectId);
   const chat: SourceToolbarButton[] = shared ? [{ label: "Project chat", glyph: "message", run: () => context.toggleProjectChat() }] : [];
   return [...chat, ...shareButtons(context, projectId)];
 }
 
 /** Redraws the toolbar when the project is shared or left, so the chat icon follows without a reload. */
 function followProjectChat(context: TabContext, projectId: string, redraw: () => void): () => void {
-  let shared = findSharedProject(context.project().sharing, projectId) !== undefined;
+  let shared = isSharedProject(context, projectId);
   return context.project().sharing.onProjectsChange(() => {
-    const now = findSharedProject(context.project().sharing, projectId) !== undefined;
+    const now = isSharedProject(context, projectId);
     if (now !== shared) { shared = now; redraw(); }
   });
 }

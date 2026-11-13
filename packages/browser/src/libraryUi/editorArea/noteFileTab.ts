@@ -1,14 +1,39 @@
 // Shows a whole notes file in a tab through the core mountNoteFile (a project note, a paper's notes.qmd): reads it once, queues the item saves and new items one after another, and runs cells through the helper.
-import { DEFAULT_NOTE_POPUP, PaperNotesStore, formatError, noteFilesPortFor, parsePaperLink, serializeItemFile, type CellLanguage, type SelectionPopupPrefs, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
-import { mountNoteFile, renderElement, showToast, type NoteFileHandle } from "@labshelf/core/dom";
+import { DEFAULT_NOTE_POPUP, PAPER_NOTES_FILE, PaperNotesStore, posixPathOps, formatError, noteFilesPortFor, parsePaperLink, serializeItemFile, type CellLanguage, type ILogger, type SelectionPopupPrefs, type MathRequest, type NoteFilesPort, type RunCellPort } from "@labshelf/core";
+import { mountNoteFile, renderElement, showToast, type NoteFileHandle, type NoteFileOptions } from "@labshelf/core/dom";
 import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import { getBrowserCellPorts } from "../../helper";
 import { createBrowserNoteFileIo, createPaperNotesPort, listCachedPaperRecords, readCachedPaperRecord } from "../../storage";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import { editorPrefsOf } from "../../writing/editorPrefs";
 import { resolvePaperLink } from "../paperLink";
 import type { TabContext, TabModule } from "./tabKinds";
 
 const MODULE = "tabs.noteFile";
+
+/** The live file a note tab holds: `live` is what mountNoteFile edits; `close` flushes it then lets it go, once however often it is called. */
+export interface NoteFileLiveBinding { live: NonNullable<NoteFileOptions["live"]>; close(): Promise<void> }
+
+/** Opens the library file at `path` as a live file; undefined without live files or when the replica fails (released then), and the tab reads the file as before. */
+export async function openNoteFileLive(logger: ILogger, path: string): Promise<NoteFileLiveBinding | undefined> {
+  const failed = (error: unknown): undefined => { void logger.error(MODULE, error, { action: "openLiveNote", path, message: formatError(error) }); return undefined; };
+  const files = await Promise.resolve().then(readPageLiveFiles).catch(failed);
+  if (!files) return undefined;
+  let opened: ReturnType<typeof files.open>;
+  try { opened = files.open(path); } catch (error) { return failed(error); }
+  try {
+    await opened.replica.ready;
+  } catch (error) {
+    await opened.release().catch(() => undefined);
+    return failed(error);
+  }
+  let closing: Promise<void> | undefined;
+  return {
+    live: { doc: opened.replica.doc, persist: () => opened.flush() },
+    // INVARIANT: release comes after flush, so the last edits reach the disk before the replica can go.
+    close: () => (closing ??= opened.flush().catch((error: unknown) => { failed(error); }).then(() => opened.release())),
+  };
+}
 
 /** Where one notes file is read and written, and what names it. */
 export interface NoteFileSource {
@@ -16,6 +41,8 @@ export interface NoteFileSource {
   label: string;
   /** The cell session and view-state key of the note. */
   noteKey: string;
+  /** The notes file's library path; when set the tab edits the file's live replica, and reads the file once only when live files are unavailable. A function resolves it when the path is known late (undefined: no live mode). */
+  livePath?: string | (() => Promise<string | undefined>);
   read(): Promise<string | null>;
   editItem(itemId: string, body: string): Promise<void>;
   /** Adds an item; without it an empty file only says it is empty. */
@@ -67,35 +94,50 @@ async function openNoteLink(ctx: TabContext, href: string): Promise<void> {
   ctx.workspace.openTab("paper", { paperId: found.paperId, ...(found.page === undefined ? {} : { page: String(found.page) }) });
 }
 
+/** The live file of the note, else the file's text read once. */
+async function loadNoteSource(ctx: TabContext, source: NoteFileSource): Promise<{ live: NoteFileLiveBinding } | { text: string | null }> {
+  const path = typeof source.livePath === "function" ? await source.livePath().catch(() => undefined) : source.livePath;
+  const live = path === undefined ? undefined : await openNoteFileLive(ctx.logger, path);
+  return live ? { live } : { text: await source.read() };
+}
+
+/** The cell ports of the note: the source may supply its own cell runner. */
+function noteCells(source: NoteFileSource, ports: ReturnType<typeof getBrowserCellPorts>): NonNullable<NoteFileOptions["cells"]> {
+  const { runMath } = ports;
+  return {
+    runCell: source.runCell ? source.runCell(ports) : ports.runCell,
+    restart: (language: CellLanguage) => ports.restartCell(source.noteKey, language),
+    ...(runMath ? { runMath: (request: MathRequest) => runMath(request) } : {}),
+    installPython: () => ports.installPython(),
+  };
+}
+
 export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: NoteFileSource): { dispose(): void } {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-note-file" }));
   const writer = createNoteWriter(ctx, source);
+  let binding: NoteFileLiveBinding | undefined;
   const ports = getBrowserCellPorts(ctx.logger);
-  const { runMath } = ports;
   let handle: NoteFileHandle | undefined;
   let disposed = false;
-  ctx.tab.onBeforeClose(writer.flush);
+  ctx.tab.onBeforeClose(async () => { if (!binding) return writer.flush(); await binding.close(); return true; });
   const placeholder = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${source.label}…`));
   // The bubble follows the library's editor-prefs.json, which the source tabs and the other app share.
   const prefs = editorPrefsOf(ctx.fs, ctx.logger);
   let notePopup: SelectionPopupPrefs = DEFAULT_NOTE_POPUP;
   const stopFollowing = prefs.onNotePopupChange((next) => { notePopup = next; });
   const popup = { prefs: () => notePopup, setPrefs: (next: SelectionPopupPrefs) => { notePopup = next; void prefs.setNotePopup(next).catch(() => undefined); } };
-  void Promise.all([source.read(), prefs.notePopup().catch(() => DEFAULT_NOTE_POPUP)]).then(([text, stored]) => {
-    if (disposed) return;
+  void Promise.all([loadNoteSource(ctx, source), prefs.notePopup().catch(() => DEFAULT_NOTE_POPUP)]).then(([loaded, stored]) => {
+    if (disposed) { if ("live" in loaded) void loaded.live.close(); return; }
+    if ("live" in loaded) binding = loaded.live;
+    const text = "text" in loaded ? loaded.text : null;
     notePopup = stored;
     placeholder.remove();
     handle = mountNoteFile(body, {
       popup, onOpenLink: (href) => { void openNoteLink(ctx, href); },
-      text: text ?? "", noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}),
+      text: text ?? "", ...(binding ? { live: binding.live } : {}), noteKey: source.noteKey, ...(source.files ? { files: source.files } : {}),
       ...(source.paperObjects ? { paperObjects: source.paperObjects } : {}), ...(ctx.noteViewState ? { viewState: ctx.noteViewState } : {}),
       save: writer.save, ...(source.addItem ? { create: writer.create } : {}), flush: async () => { await writer.flush(); },
-      cells: {
-        runCell: source.runCell ? source.runCell(ports) : ports.runCell,
-        restart: (language: CellLanguage) => ports.restartCell(source.noteKey, language),
-        ...(runMath ? { runMath: (request: MathRequest) => runMath(request) } : {}),
-        installPython: () => ports.installPython(),
-      },
+      cells: noteCells(source, ports),
       onError: (action, error) => { void ctx.logger.error(MODULE, error, { action, note: source.label }); },
     });
   }, (error: unknown) => {
@@ -106,7 +148,8 @@ export function mountNoteFileTab(host: HTMLElement, ctx: TabContext, source: Not
     dispose() {
       disposed = true;
       stopFollowing();
-      void writer.flush().then(() => { handle?.destroy(); body.remove(); });
+      // A live note is flushed and released by its binding; the editor goes after the flush either way.
+      void (binding ? binding.close() : writer.flush()).then(() => { handle?.destroy(); body.remove(); });
     },
   };
 }
@@ -129,6 +172,7 @@ export const mountPaperNoteTab: TabModule["mountTab"] = (host, params, ctx) => {
   return mountNoteFileTab(host, ctx, {
     label: "notes",
     noteKey: `paper:${paperId}`,
+    livePath: async () => { const paper = await readCachedPaperRecord(paperId); return paper ? posixPathOps.join(paper.path, PAPER_NOTES_FILE) : undefined; },
     read: async () => serializeItemFile(await store.read(paperId)),
     editItem: (itemId, body) => store.editItem(paperId, itemId, body),
     addItem: async (itemId, body) => { await store.addItem(paperId, { id: itemId, body }); },

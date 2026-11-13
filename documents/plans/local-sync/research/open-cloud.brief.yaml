@@ -1,0 +1,23 @@
+schema: brief/v1
+area: remote library at labshelf.org/open (Mirror DO, sync, page edits)
+sha: 52df3c4ec
+reuse:
+  - {symbol: createMirrorRunner, path: packages/core/src/remoteLibrary/mirrorRunner.ts, lines: "215-234"}
+  - {symbol: applyMirrorEdits, path: packages/core/src/remoteLibrary/mirrorEdits.ts, lines: "93-104", why: "host pull; local==base write, else conflict copy; EDITABLE at 29"}
+  - {symbol: conflictCopyPath, path: packages/core/src/library/conflicts/conflictCopy.ts}
+  - {symbol: createMirrorFileSystem, path: website/src/open/mirrorFileSystem.ts, lines: "49-145", why: "writes are Mirror edits, 1 s coalescing, base = last accepted hash, 409 -> CONFLICT_NOTICE"}
+  - {symbol: mountSourceTab, path: website/src/open/fileTabs.ts, lines: "105-134"}
+  - {symbol: mountNoteFile, path: website/src/open/noteTab.ts, lines: "19-60"}
+  - {symbol: Mirror edit handler, path: packages/core/src/relay/worker/mirror.ts, lines: "233-254"}
+read:
+  - {path: website/src/open/remoteClient.ts, lines: "1-109"}
+  - {path: packages/core/src/relay/worker/mirrorRoutes.ts, lines: "170-193"}
+  - {path: packages/core/src/remoteLibrary/mirrorState.ts, lines: "1-53"}
+contracts: ["contracts/remote-library#edits", "contracts/remote-library#sync-run"]
+tests:
+  - {path: packages/core/__tests__/remoteLibrary/mirrorEdits.test.ts}
+  - {path: packages/core/__tests__/relay/worker/mirrorRoutes.test.ts}
+risks:
+  - "Page never refreshes an open file; after 409 the text lives only in memory."
+  - "Host pulls every 60 s; local change in between -> conflict copy, web edit survives only there."
+  - "Worktrees open-mirror-ui and remote-library-full are stale and merged; ignore."

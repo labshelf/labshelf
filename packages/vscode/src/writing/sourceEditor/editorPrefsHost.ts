@@ -29,6 +29,20 @@ export interface EditorPrefsHostDeps {
 /** The file inside the library root, as the pattern the watcher takes. */
 const PREFS_PATTERN = ".research/editor-prefs.json";
 
+/** Follows the library's store and watches its prefs file; one disposable undoes both. */
+function watchPrefs(
+  { store, root }: { store: EditorPrefsStore; root: string },
+  emit: (typing: TypingHelpers) => void,
+  emitPopup: (key: EditorPopupKey) => (popup: SelectionPopupPrefs) => void,
+): vscode.Disposable {
+  const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(root), PREFS_PATTERN));
+  const changed = (): void => { void store.changed(); };
+  const unsubscribe = store.onChange(emit);
+  const unsubscribePopup = store.onSelectionPopupChange(emitPopup("selectionPopup"));
+  const unsubscribeNotePopup = store.onNotePopupChange(emitPopup("notePopup"));
+  return vscode.Disposable.from({ dispose: unsubscribe }, { dispose: unsubscribePopup }, { dispose: unsubscribeNotePopup }, watcher, watcher.onDidChange(changed), watcher.onDidCreate(changed), watcher.onDidDelete(changed));
+}
+
 export function createEditorPrefsHost(deps: EditorPrefsHostDeps): EditorPrefsHost & vscode.Disposable {
   const listeners = new Set<(typing: TypingHelpers) => void>();
   let binding: vscode.Disposable | undefined;
@@ -45,15 +59,9 @@ export function createEditorPrefsHost(deps: EditorPrefsHostDeps): EditorPrefsHos
     binding = undefined;
     const library = deps.current();
     if (!library) { return; }
-    const { store, root } = library;
-    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(root), PREFS_PATTERN));
-    const changed = (): void => { void store.changed(); };
-    const unsubscribe = store.onChange(emit);
-    const unsubscribePopup = store.onSelectionPopupChange(emitPopup("selectionPopup"));
-    const unsubscribeNotePopup = store.onNotePopupChange(emitPopup("notePopup"));
-    binding = vscode.Disposable.from({ dispose: unsubscribe }, { dispose: unsubscribePopup }, { dispose: unsubscribeNotePopup }, watcher, watcher.onDidChange(changed), watcher.onDidCreate(changed), watcher.onDidDelete(changed));
+    binding = watchPrefs(library, emit, emitPopup);
     // Panels open on another library's values now.
-    if (announce) { void store.typing().then(emit); void store.selectionPopup().then(emitPopup("selectionPopup")); void store.notePopup().then(emitPopup("notePopup")); }
+    if (announce) { void library.store.typing().then(emit); void library.store.selectionPopup().then(emitPopup("selectionPopup")); void library.store.notePopup().then(emitPopup("notePopup")); }
   };
 
   bind(false);

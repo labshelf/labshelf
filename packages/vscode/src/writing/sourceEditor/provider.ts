@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  createNonce, createSourceAuthority, parseSourceEditorOutbound,
+  createNonce, isConsultOutbound, parseSourceEditorOutbound,
   type Annotation, type DictionaryStore, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound, type SelectionPopupPrefs, type TypingHelpers,
 } from "@labshelf/core";
 import type { EditorPrefsHost } from "./editorPrefsHost.js";
@@ -19,6 +19,10 @@ import { openProjectOutputs, type OutputSourceHost } from "../outputs/index.js";
 import { createDeckWorkspaceBridge, currentPdfjs, isDeckSource, type DeckWorkspaceBridge } from "./deckWorkspaceHost.js";
 import { describePdfjsAssets, pdfjsResourceRoots } from "./pdfjsAssets.js";
 import { createDocumentSync } from "./documentSync.js";
+import { lineBreakOf, sourceAuthorities } from "./authorities.js";
+import type { DiskMerge } from "../../localSync/index.js";
+import { createAutosave } from "../../localSync/index.js";
+import { createConsultFiles, createVscodeConsultIo } from "../../consult/index.js";
 import { createSourcePresence, currentSourcePresence, type PeerSelection } from "./presenceBridge.js";
 
 export const SOURCE_EDITOR_VIEW_TYPE = "labshelf.sourceEditor";
@@ -54,6 +58,8 @@ export interface SourceEditorProviderDeps {
   state?: Pick<vscode.Memento, "get" | "update">;
   /** This machine's source folders of linked outputs; absent on the web, where the page links no outputs. */
   outputSources?: OutputSourceHost;
+  /** Takes a disk change of the open file into its dirty document by a merge; without it VS Code's own reload rules apply. */
+  diskMerge?: DiskMerge;
 }
 
 /** A project's review mode is kept under this key; Editing until the user picks Reviewing. */
@@ -94,10 +100,6 @@ async function sourceEditorHtml(webview: vscode.Webview, extensionUri: vscode.Ur
   });
 }
 
-function lineBreakOf(document: vscode.TextDocument): "\n" | "\r\n" {
-  return document.eol === vscode.EndOfLine.CRLF ? "\r\n" : "\n";
-}
-
 /** The first message a panel gets: the file, its project and the authority's text, LF inside the editor. */
 function initMessage(
   document: vscode.TextDocument, authority: SourceAuthority, projects: SourceEditorProviderDeps["projects"], review: ReturnType<SourceBridges["review"]>, typing: TypingHelpers | undefined,
@@ -130,27 +132,6 @@ async function answerRequest(request: Request, bridges: SourceBridges, deck: Dec
 const NO_NOTES: NoteInsertSource = {
   listProjectNotes: async () => [], readProjectNote: async () => undefined, listCitedPaperIds: async () => [], readPaperNote: async () => undefined,
 };
-
-/** The authorities of the documents open in a LabShelf editor: created with the first panel on a document, dropped with the last. */
-function createAuthorities() {
-  const open = new Map<string, { authority: SourceAuthority; panels: number }>();
-  return {
-    acquire(document: vscode.TextDocument): SourceAuthority {
-      const key = document.uri.toString();
-      const entry = open.get(key) ?? { authority: createSourceAuthority({ text: document.getText(), lineBreak: lineBreakOf(document) }), panels: 0 };
-      entry.panels += 1;
-      open.set(key, entry);
-      return entry.authority;
-    },
-    release(document: vscode.TextDocument): void {
-      const key = document.uri.toString();
-      const entry = open.get(key);
-      if (!entry) { return; }
-      entry.panels -= 1;
-      if (entry.panels <= 0) { open.delete(key); }
-    },
-  };
-}
 
 type Post = (message: SourceEditorInbound | { type: string; [key: string]: unknown }) => void;
 
@@ -250,6 +231,8 @@ interface PanelSession {
   deckWatch: { current?: vscode.Disposable | undefined };
   /** The typing helpers shared by both apps; undefined where there is none. */
   editorPrefs: EditorPrefsHost | undefined;
+  /** The files the panel's consult windows edit, one session per window key. */
+  consult: ReturnType<typeof createConsultFiles>;
   /** The page's subscription to changes of the typing helpers. */
   typingWatch: { current?: vscode.Disposable | undefined };
 }
@@ -338,6 +321,8 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
     // The floating search's messages travel in a "projectSearch" envelope beside the editor's own.
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       if (isSearchEnvelope(raw)) { void search.handle(raw.message); return; }
+      // The consult window's messages ride the same way, each naming its window.
+      if (isConsultOutbound(raw)) { void session.consult.handle(raw); return; }
       // A page that starts or reloads learns whether the PDF is open, for its eye button.
       if ((raw as { type?: unknown } | null)?.type === "ready") { postPreviewOpen(); postProjectChat(); }
       return handlePageMessage(raw, session);
@@ -345,17 +330,26 @@ function listenToPanel(deps: SourceEditorProviderDeps, panel: vscode.WebviewPane
   ];
 }
 
+/** The consult windows of a panel: their requests answered over the library and the panel's project, their files as clients of the shared authorities. */
+function openConsult(deps: SourceEditorProviderDeps, project: ReturnType<typeof findOwningProject>, post: Post, autosave: ReturnType<typeof createAutosave>): ReturnType<typeof createConsultFiles> {
+  const io = createVscodeConsultIo({ library: deps.library, projects: deps.projects, highlightsOf: deps.highlightsOf, paperNotes: deps.paperNotes, projectFolder: project?.folder });
+  return createConsultFiles({
+    post, io, projectId: project?.settings.id, projectFolder: project?.folder, projects: deps.projects, library: deps.library,
+    authorities: sourceAuthorities, autosave, logger: deps.logger,
+  });
+}
+
 export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vscode.CustomTextEditorProvider {
-  const authorities = createAuthorities();
   const codeChanges = createCodeChangeFeed();
   return {
     async resolveCustomTextEditor(document, panel) {
       const { extensionUri, logger } = deps;
       const deck = isDeckSource(document);
       panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri), ...pdfjsResourceRoots(currentPdfjs())] };
-      const authority = authorities.acquire(document);
+      const authority = sourceAuthorities.acquire(document);
       const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
       const page = createPage(panel);
+      const autosave = createAutosave();
       const peers: PeerMemory = {};
       const cursor = { line: 1 };
       const session: PanelSession = {
@@ -366,6 +360,7 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         sync: createDocumentSync({ document, authority, applyEdit: (edit) => vscode.workspace.applyEdit(edit), post: page.post, logger }),
         focus: new vscode.EventEmitter<boolean>(),
         presence: project ? openPresence(document, page.post, peers) : undefined,
+        consult: openConsult(deps, project, page.post, autosave),
       };
       const subscriptions = listenToPanel(deps, panel, session, createSourceView(document, page, cursor));
       // A saved or rewritten code file redraws the marks of the listings copied from it.
@@ -376,10 +371,14 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         subscriptions.push(outputs.watch(() => page.post({ type: "outputsChanged" })));
       }
       subscriptions.push({ dispose: () => session.bridges.dispose() });
+      const tracked = deps.diskMerge?.track(document);
+      if (tracked) { subscriptions.push(tracked); }
       panel.onDidDispose(() => {
         session.sync.dispose();
+        session.consult.dispose();
+        autosave.dispose();
         while (subscriptions.length) { subscriptions.pop()?.dispose(); }
-        authorities.release(document);
+        sourceAuthorities.release(document);
       });
       panel.webview.html = await sourceEditorHtml(panel.webview, extensionUri);
     },

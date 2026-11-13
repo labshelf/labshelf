@@ -103,6 +103,48 @@ describe("ReaderHostController", () => {
       expect(posted).toHaveLength(0);
     });
   });
+
+  describe("refreshNotes", () => {
+    const NOTE_ID = "n-01JB2QN0000000000000000000";
+    const itemText = (body: string) => `::: {#${NOTE_ID} .labshelf-item anchor="" author="Ana" created="2026-10-01T00:00:00.000Z"}\n${body}\n:::\n`;
+    type UpdateNotes = Extract<HostToWebview, { type: "updateNotes" }>;
+
+    function setupNotes(seed: string) {
+      const base = setupHost();
+      const files: Record<string, string> = { p1: seed };
+      Object.assign(base.ports, { notes: new PaperNotesStore({ read: async (id) => files[id] ?? null, write: async (id, t) => { files[id] = t; } }) });
+      return { ...base, notesFiles: files };
+    }
+
+    it("pushes the reloaded notes when notes.qmd changed since the last push", async () => {
+      const { host, posted, notesFiles } = setupNotes(itemText("first"));
+      await host.handle({ command: "ready-for-init" });
+      await host.handle({ command: "ready", totalPages: 3 });
+      const before = posted.length;
+      notesFiles.p1 = itemText("edited in another tab");
+      await host.refreshNotes();
+      expect(posted).toHaveLength(before + 1);
+      const update = posted.at(-1) as UpdateNotes;
+      expect(update.type).toBe("updateNotes");
+      expect(update.items.map((item) => item.body.trim())).toEqual(["edited in another tab"]);
+    });
+
+    it("posts nothing when the notes are unchanged", async () => {
+      const { host, posted } = setupNotes(itemText("first"));
+      await host.handle({ command: "ready-for-init" });
+      await host.handle({ command: "ready", totalPages: 3 });
+      const before = posted.length;
+      await host.refreshNotes();
+      await host.refreshNotes();
+      expect(posted).toHaveLength(before);
+    });
+
+    it("does nothing before the reader is ready", async () => {
+      const { host, posted } = setupNotes(itemText("first"));
+      await host.refreshNotes();
+      expect(posted).toHaveLength(0);
+    });
+  });
 });
 
 describe("preview messages", () => {

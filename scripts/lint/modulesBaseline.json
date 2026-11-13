@@ -45,7 +45,6 @@
   "satellite packages/browser/src/libraryUi/editorArea/deckExport.ts",
   "satellite packages/browser/src/libraryUi/editorArea/historyTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/libraryTab.ts",
-  "satellite packages/browser/src/libraryUi/editorArea/previewTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/projectListTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/searchTab.ts",
   "satellite packages/browser/src/libraryUi/editorArea/spacesCatalogTab.ts",

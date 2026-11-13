@@ -4,8 +4,10 @@ import { formatError, type ILogger, type PaperRecord } from "@labshelf/core";
 import { renderElement, showToast, type EditorTabBody } from "@labshelf/core/dom";
 
 import { saveFile } from "../share/shareDownloads.js";
+import { mapCursor, rebaseExternalText } from "./externalText.js";
 import type { MirrorFileSystem } from "./mirrorFileSystem.js";
 import type { MirrorProject } from "./mirrorProjects.js";
+import { mirrorTextMerge } from "./mirrorText.js";
 import { mountNoteFile, type NoteCells } from "./noteTab.js";
 import { compileInBrowser, LATEX_EXPERIMENTAL_NOTICE } from "./runtimes/index.js";
 import { exitFullscreen } from "./sourceView.js";
@@ -115,7 +117,13 @@ async function mountEditorFile(body: HTMLElement, context: FileTabContext, file:
   });
   if (/\.(tex|typ)$/i.test(file)) { body.append(renderCompileBar(context, file, () => editor.flush())); }
   body.append(holder);
-  return { destroy: () => { void editor.dispose(); holder.remove(); } };
+  const path = projectPath(project, file);
+  const unwatch = fs.watch(path, (change) => {
+    const current = editor.deck.text();
+    const next = rebaseExternalText(path, current, change, mirrorTextMerge);
+    if (next !== undefined) { editor.deck.apply({ text: next, cursor: mapCursor(current, next, editor.deck.cursor()) }); }
+  });
+  return { destroy: () => { unwatch(); void editor.dispose(); holder.remove(); } };
 }
 
 /** A project file's tab: a source in the source editor, a note in the note editor, any other text read-only. */
@@ -128,7 +136,8 @@ export function mountSourceTab(el: HTMLElement, context: FileTabContext, file: s
     body.textContent = "";
     const pre = renderElement("pre", { class: "open-source-text", text });
     body.append(pre);
-    return { destroy: () => { pre.remove(); } };
+    const unwatch = context.fs.watch(projectPath(context.project, file), (change) => { pre.textContent = change.text; });
+    return { destroy: () => { unwatch(); pre.remove(); } };
   });
 }
 

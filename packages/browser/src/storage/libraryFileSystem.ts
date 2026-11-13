@@ -2,6 +2,9 @@
 // and routes every call there.
 import { BRIDGE_HOST_NAME, BridgeClient, BridgeFileSystem, deriveBridgeFailure, setBridgeLibrary } from "@labshelf/core";
 import type { BridgeFailureKind, ILogger, LibraryFileSystem, NativeMessagePort, OpenBridge } from "@labshelf/core";
+import { createPageLiveFiles } from "../localSync/pageLiveFiles";
+import { wrapLiveFileSystem } from "../localSync/liveFileSystem";
+import type { LiveFiles } from "../localSync/liveFiles";
 import { connectBrowserNative, createBrowserLogger } from "../platform";
 import { IdbFileSystem } from "./idb";
 import { DirFileSystem, ensureFolderGranted, readPickedDir, onPickedDirChange } from "./pickedDir";
@@ -183,11 +186,12 @@ function routedFileSystem(pick: () => Promise<LibraryFileSystem>): LibraryFileSy
 }
 
 let shared: LibraryLocations | undefined;
+let pageLiveFiles: () => Promise<LiveFiles | undefined> = () => Promise.resolve(undefined);
 
 function sharedSources(): LibraryLocations {
   if (shared) return shared;
   const logger = createBrowserLogger();
-  shared = createLibraryLocations({
+  const locations = createLibraryLocations({
     connect: () => connectBrowserNative(BRIDGE_HOST_NAME),
     pickedFolder: async () => {
       const handle = await readPickedDir();
@@ -198,7 +202,21 @@ function sharedSources(): LibraryLocations {
     browserFs: new IdbFileSystem(),
     rebuild: (folderFs) => refreshPaperRecords(folderFs, logger),
   });
+  // INVARIANT: the replicas and writers use the routed (unwrapped) files, else a writer would write into its own replica.
+  pageLiveFiles = createPageLiveFiles({
+    // PLATFORM: records.ts imports this module, so its library id is reached lazily to keep the static graph acyclic.
+    libraryId: async () => (await import("./records")).readCurrentLibraryId(),
+    fs: locations.fileSystem,
+    filesChanged: (listener) => locations.onLibraryFilesChanged(listener),
+  });
+  shared = { ...locations, fileSystem: wrapLiveFileSystem(locations.fileSystem, () => pageLiveFiles()) };
   return shared;
+}
+
+/** The page's live files of the current library; undefined where the browser lacks BroadcastChannel or Web Locks. */
+export function readPageLiveFiles(): Promise<LiveFiles | undefined> {
+  sharedSources();
+  return pageLiveFiles();
 }
 
 /** The page's one set of library sources, for composition roots that hand them to adapters. */
@@ -241,3 +259,4 @@ export function onLibraryFilesChanged(listener: (paths: string[]) => void): () =
 export function onPaperRecordsRebuilt(listener: () => void): () => void {
   return sharedSources().onFolderRecordsRebuilt(listener);
 }
+

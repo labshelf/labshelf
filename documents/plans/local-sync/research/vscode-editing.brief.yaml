@@ -1,0 +1,25 @@
+schema: brief/v1
+area: VS Code source/notes/deck editing, multi-view and external changes
+sha: 52df3c4ec
+reuse:
+  - {symbol: createDocumentSync, path: packages/vscode/src/writing/sourceEditor/documentSync.ts, lines: "83-175", why: "CustomTextEditor on TextDocument; echo filter; external changes via authority.external()"}
+  - {symbol: createAuthorities, path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "135-158", why: "one SourceAuthority per URI, refcounted, per window"}
+  - {symbol: createSourceAuthority, path: packages/core/src/writing/authority.ts, lines: "110"}
+  - {symbol: registerCustomEditorWithReopen, path: packages/vscode/src/writing/customEditorTabs.ts, lines: "24-36"}
+  - {symbol: deckSync, path: packages/vscode/src/writing/deckEditor/deckSync.ts, lines: "95-135"}
+  - {symbol: writeProjectFile, path: packages/vscode/src/writing/sourceEditor/deckWorkspaceHost.ts, lines: "98-106", why: "WorkspaceEdit + save pattern"}
+  - {symbol: PaperNotesStore, path: packages/core/src/qmd/paperNotes.ts, lines: "41-75"}
+  - {symbol: ExternalChangeWatcher, path: packages/vscode/src/library/fileSystem.ts, lines: "150-185", why: "re-index only"}
+read:
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "348-392"}
+  - {path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "21-175"}
+  - {path: packages/vscode/src/writing/notesEditor/provider.ts, lines: "63-68, 132-176", why: "never calls document.save(); re-posts full text on every change"}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "39-90"}
+  - {path: packages/core/src/qmd/node/nodePaperNotesPort.ts, lines: "20-45", why: "fs + atomic rename, bypasses TextDocument"}
+  - {path: packages/vscode/src/activation/libraryRootController.ts, lines: "38-42"}
+  - {path: packages/vscode/src/library/fileSystem.ts, lines: "40-62", why: "writeFile via workspace.fs, never TextDocument"}
+risks:
+  - "Reader note writes go to disk behind an open (often dirty) notes TextDocument -> VS Code conflict dialog or overwrite."
+  - "Reader does not watch notes.qmd; stale bodies overwrite newer ones."
+  - "Several windows meet only at disk; dirty docs get VS Code's conflict dialog; LabShelf adds no merge."
+  - "Three echo-suppression mechanisms (documentSync, deckSync, notesEditor)."

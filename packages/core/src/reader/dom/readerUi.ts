@@ -1,12 +1,15 @@
 // Builds the reader UI, the hover previews created after first render, and wires the host messages to them.
 import { deriveClampedPage, type WebviewToHost } from "../index.js";
-import { BuildBanner, PagePill, Toolbar } from "./toolbar.js";
+import { renderIcon } from "../../ui/index.js";
+import { findElement, renderElement } from "../../ui/dom/index.js";
+import { PagePill, Toolbar } from "./toolbar.js";
 import { Cheatsheet, type ThemeController } from "./theme.js";
 import { ViewModes, openAppearancePopover } from "./appearance.js";
 import { SelectionBubble } from "./selectionBubble.js";
 import { PageHighlights } from "./pageHighlights.js";
 import { FindBar, type ChangeMarks } from "./findMarks.js";
-import { NavigationHistory, Zoom, type Keyboard, type SourceSync } from "./navigation.js";
+import { Zoom, type Keyboard, type SourceSync } from "./navigation.js";
+import { NavigationHistory } from "./navigationHistory.js";
 import { createAreaScroller, countBodyPages, mountPreviewChrome, type PreviewChrome, createPreviewOutlineSource } from "./previewChrome.js";
 import { mountPreviewDeck } from "./previewDeck.js";
 import { LogsView } from "./previewProblems.js";
@@ -31,6 +34,7 @@ import { formatError } from "../../errors/index.js";
 import { openCiteDialog, type CiteChoiceMemory } from "./citeDialog.js";
 import { readerCiteClient } from "./citeClient.js";
 import { cellRunInfoOf } from "../../qmd/compute/index.js";
+import { createConsult, type Consult, type ConsultSetup } from "../../writing/consult/dom/createConsult.js";
 
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
@@ -109,6 +113,16 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   };
   if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
+}
+
+/**
+ * Builds the reader's consult over the host's setup (its windows float over the page) and shows its Consult button and chips in the toolbar.
+ * @returns the consult, which the caller disposes when the page goes away.
+ */
+export function mountReaderConsult(toolbar: Toolbar, setup: ConsultSetup): Consult {
+  const consult = createConsult({ ...setup, root: document.body, onError: (error) => console.warn("LabShelf reader: consult failed", error) });
+  toolbar.setConsult({ choose: consult.choose, windows: consult.windows });
+  return consult;
 }
 
 type ToolbarParts = Pick<ReaderUi, "sidebar" | "findBar" | "cheatsheet" | "viewModes" | "boxTool" | "equationTool" | "bubble" | "goToPage"> & { openCite: ((page?: number, quote?: string) => void) | undefined };
@@ -200,6 +214,29 @@ interface DocumentText {
   citations: CitationResolver;
   floats: FloatResolver;
   pageText: PageTextCache;
+}
+
+/** Reports a preview PDF that could not reload, at the top of the reader. */
+export class BuildBanner {
+  private readonly root = findElement("build-banner");
+
+  /**
+   * Reports a PDF the reader could not reload; the open document stays on screen.
+   */
+  showReloadError(message: string): void {
+    this.render("rd-build-failed", renderElement("span", { class: "rd-build-icon", html: renderIcon("warning") }), `Could not reload the PDF: ${message}`);
+  }
+
+  clear(): void {
+    this.root.hidden = true;
+    this.root.replaceChildren();
+  }
+
+  private render(kind: string, glyph: HTMLElement, text: string): void {
+    this.root.className = kind;
+    this.root.replaceChildren(glyph, renderElement("span", {}, text));
+    this.root.hidden = false;
+  }
 }
 
 export class DeferredHover {

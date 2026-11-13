@@ -1,0 +1,36 @@
+schema: brief/v1
+area: browser-consult
+question: "session 9 browser half: consult footer in the source tab, replica-backed editable files, Chromium picker, IO for answerConsult"
+sha: 99bc8913f
+reuse:
+  - {symbol: readPageLiveFiles, path: packages/browser/src/storage/libraryFileSystem.ts, lines: "217-220", why: "page hub: Promise<LiveFiles|undefined>. LiveFiles.open(path) -> {replica, flush(), release()}; key = library-relative path, kind = deriveReplicaKind(path)."}
+  - {symbol: LiveFiles, path: packages/browser/src/localSync/liveFiles.ts, lines: "12-16", why: "LiveFile {replica, flush, release}; no localSync barrel."}
+  - {symbol: openLiveBinding, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "29-43", why: "open(fullPathOf(entry,path)) -> await replica.ready -> collab binding; release on ready failure."}
+  - {symbol: openNoteFileLive, path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "13-34", why: "qmd live binding: persist = opened.flush(); close = flush then release once."}
+  - {symbol: fullPathOf, path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "46-46", why: "posixPathOps.join(entry.folder, relPath): the hub key of a project file."}
+  - {symbol: createBrowserReaderCiteIo, path: packages/browser/src/writing/libraryCitation.ts, lines: "93-125", why: "projects() via createBrowserProjectContent listProjects('') filtered ready (listReady 83-86); listFiles via createProjectNoteFiles."}
+  - {symbol: listProjectFiles, path: packages/core/src/writing/project/projectReads.ts, lines: "27-27", why: "project file list"}
+  - {symbol: listCachedPaperRecords, path: packages/browser/src/storage/records.ts, lines: "33-33", why: "ConsultIo.listPapers"}
+  - {symbol: createPaperNotesPort, path: packages/browser/src/storage/records.ts, lines: "167-185", why: "paperNotesText via read(paperId); paperIdsWithNotes: derive by fs.stat of createPaperFiles(p.path, joinWith('/')).notes"}
+  - {symbol: paperDeps.highlightsOf, path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "120-135", why: "annotations via PaperSidecarStore; PDF bytes fs.readFile(`${paper.path}/${PDF_FILE}`); pdfOf = {assets: extensionPdfAssets(), createWorker: createPdfWorker, readBytes}"}
+edit:
+  - {path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "169-190", why: "editorDeps extensions at 179: merge feed.extension with consult.footer()"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "46-85", why: "loadEditor; dispose in SourceTabState 112-124, adoptEditor 200-207, disposeSourceTab 209-218, retry 249-261"}
+read:
+  - {path: packages/core/src/writing/consult/dom/editableFile.ts, lines: "1-48", why: "editableFromReplica calls replica.release(), not LiveFile.release(): wrap so release flushes then LiveFile.release()"}
+  - {path: packages/core/src/writing/consult/answerConsult.ts, lines: "12-27", why: "ConsultIo"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceEditorDeps.ts, lines: "62-71", why: "codeLinkSource: project-scoped code file filter; no library-wide code lister"}
+callers:
+  - {symbol: readPageLiveFiles, path: packages/browser/src/libraryUi/editorArea/noteFileTab.ts, lines: "20-20"}
+  - {symbol: readPageLiveFiles, path: packages/browser/src/libraryUi/editorArea/deckTab.ts, lines: "106-106"}
+  - {symbol: readPageLiveFiles, path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "178-178"}
+tests:
+  - {path: packages/browser/__tests__/localSync/liveFiles.test.ts, covers: "hub/LiveFiles"}
+  - {path: packages/browser/__tests__/libraryUi/editorArea/noteFileLive.test.ts, covers: "openNoteFileLive"}
+commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/localSync"]
+risks:
+  - "Shared projects use mode.collab (no hub replica for the tab); consult must work in both modes."
+  - "The source tab runs in the page that owns the hub: ConsultClient = direct answerConsult call."
+  - "showOpenFilePicker: no use or detection anywhere; browse only when typeof window.showOpenFilePicker === 'function'; needs the user gesture."
+  - "No sourceTab test exists; editorArea suites have known failures (ERR_VM_DYNAMIC_IMPORT, workspaceTabHooks)."
+  - "Duplication: listReady (libraryCitation.ts:83) and spaces.ts:67 both filter ready projects; reuse, do not copy a third time."

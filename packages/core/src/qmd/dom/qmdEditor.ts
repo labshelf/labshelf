@@ -3,7 +3,7 @@ import { baseKeymap } from "prosemirror-commands";
 import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { EditorState, Plugin, type Command } from "prosemirror-state";
-import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
+import { EditorView } from "prosemirror-view";
 import { redoCommand, undoCommand, yCursorPlugin, ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 import type * as Y from "yjs";
 import type { Awareness } from "y-protocols/awareness";
@@ -32,7 +32,7 @@ import { createFigureView } from "./figureView.js";
 import { loadFigureEditor } from "./figureEditor/index.js";
 import { tableChartsPlugin } from "./tableCharts.js";
 import { loadCorePlotly } from "./plotView.js";
-import { insertGapPlugin, isEmptyNote, renderInsertButton, showInsertMenu } from "./insertGap.js";
+import { collabCursor, insertGapPlugin, linkPlugin, placeholderPlugin, renderInsertButton, showInsertMenu } from "./insertGap.js";
 import { mathCheckPlugin } from "./mathCheckPlugin.js";
 import { createMathView, loadCoreMath } from "./mathView.js";
 import { createMathComputeHooks, createMathResultView, mathResultPlugin, type MathCompute } from "./mathResultView.js";
@@ -46,8 +46,8 @@ import { mountQmdBubble, type QmdBubble, type QmdPopupOptions } from "./qmdBubbl
 import { openPaperObjectPicker, type EditorPaperObjects } from "./paperObjectPicker.js";
 import { mountLineGutter, type LineGutter, type LineNumbering } from "./lineGutter.js";
 
-/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). `blocks: "text"` offers no block insertion (no empty-note choices, gap '+', Insert button or menu), for a surface that holds text and math only; existing blocks still render. `emptyChoices: false` gives an empty note the gap '+' instead of the row of block choices. `paperObjects` adds From paper… (Insert panel, gap menus and Mod-Alt-p) to an editable view that inserts blocks: a picker of a library paper's equations, figures and tables, starting on `defaultPaperId` when given; its image files go through `files`, and new equation labels avoid those of this body and of `otherBodies()`. `popup` gives the bubble the note hosts' settings, which add its click insertions and, with `setPrefs`, Customize popup…; without it the bubble formats selections only. With `onOpenLink` a selection by a paper link also offers Open in PDF. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort; blocks?: "all" | "text"; emptyChoices?: boolean; paperObjects?: EditorPaperObjects; popup?: QmdPopupOptions }
+/** `noteActions` (from the note bar's actionsFor) adds Run section to headings, Run above / below to the cell menu and Mod-Shift-Enter (Run all). `onRunBelow` receives the item-local key of the cell whose Run below was pressed on a cell marked "May be out of date" (the cell label, else `cell-` and its ordinal); the host adds the item prefix. `status` is a host element (a save status, say) shown at the right of the row under the text. `gutter` shows the line gutter (numbers, and on an editable view the '+' of the hovered line); its `numbering` continues the numbers of the editors before this one. `files` reads and writes the note's assets/ files (a chart's CSV). `blocks: "text"` offers no block insertion (no empty-note choices, gap '+', Insert button or menu), for a surface that holds text and math only; existing blocks still render. `emptyChoices: false` gives an empty note the gap '+' instead of the row of block choices. `paperObjects` adds From paper… (Insert panel, gap menus and Mod-Alt-p) to an editable view that inserts blocks: a picker of a library paper's equations, figures and tables, starting on `defaultPaperId` when given; its image files go through `files`, and new equation labels avoid those of this body and of `otherBodies()`. `popup` gives the bubble the note hosts' settings, which add its click insertions and, with `setPrefs`, Customize popup…; without it the bubble formats selections only. With `onOpenLink` a selection by a paper link also offers Open in PDF. `collab` binds the view to a Y fragment (the fragment edit is the change); its `awareness`, when given, draws the peers' cursors. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?: RunCell; onRestartCell?(language: CellLanguage): void; onRunBelow?(cellKey: string): void; onEvalMath?: OnEvalMath; cellsAbove?: CellsAbove; onOpenLink?(href: string): void; readOnly?: boolean; placeholder?: string; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness?: Awareness }; viewState?: { port: QmdViewStatePort; key: string }; noteActions?: NoteActions; gutter?: { numbering?: LineNumbering }; files?: NoteFilesPort; blocks?: "all" | "text"; emptyChoices?: boolean; paperObjects?: EditorPaperObjects; popup?: QmdPopupOptions }
 
 /**
  * `notebook(itemId)` lists the code cells as notebook cells of item `itemId` (default ''); `sections()` lists the headings' sections; both empty once destroyed.
@@ -65,41 +65,6 @@ const EXTERNAL = "qmdExternal";
 
 /** UI words for a LabShelf Markdown item (D16); renaming "note" is a change here only. */
 export const QMD_VOCABULARY: { readonly item: string } = { item: "note" };
-
-/** Shows the empty-item placeholder through a node decoration with a class. */
-function placeholderPlugin(text: string): Plugin {
-  return new Plugin({
-    props: {
-      decorations(state) {
-        const { doc } = state;
-        if (!isEmptyNote(doc)) return null;
-        return DecorationSet.create(doc, [Decoration.node(0, doc.firstChild!.nodeSize, { class: "qmd-editor-placeholder", "data-placeholder": text })]);
-      },
-    },
-  });
-}
-
-/** Opens links through `onOpenLink` instead of navigating the host page. */
-function linkPlugin(onOpenLink: (href: string) => void): Plugin {
-  return new Plugin({
-    props: {
-      handleDOMEvents: {
-        click(_view, event) {
-          const anchor = (event.target as Element | null)?.closest?.("a[href]");
-          if (!anchor) return false;
-          event.preventDefault();
-          onOpenLink(anchor.getAttribute("href") ?? "");
-          return true;
-        },
-      },
-    },
-  });
-}
-
-/** Remote cursors drawn with classes only: the webview CSP forbids inline styles. */
-function collabCursor(user: { name?: string }): HTMLElement {
-  return renderElement("span", { class: "qmd-editor-cursor" }, "⁠", renderElement("span", { class: "qmd-editor-cursor-name", text: user.name ?? "" }), "⁠");
-}
 
 interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; footer: HTMLElement; source: HTMLTextAreaElement }
 
@@ -142,9 +107,10 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command, bubble
   const { noteActions } = options;
   plugins.push(foldPlugin(noteActions ? { runSection: (section) => noteActions.runScope({ kind: "section", section }), canRun: () => noteActions.canRun() } : {}), currentBlockPlugin());
   if (collab) {
+    plugins.push(ySyncPlugin(collab.fragment));
+    // Without awareness (the views of one replica on this machine) no peer cursors are drawn.
+    if (collab.awareness) plugins.push(yCursorPlugin(collab.awareness, { cursorBuilder: collabCursor, selectionBuilder: () => ({ class: "qmd-editor-selection" }) }));
     plugins.push(
-      ySyncPlugin(collab.fragment),
-      yCursorPlugin(collab.awareness, { cursorBuilder: collabCursor, selectionBuilder: () => ({ class: "qmd-editor-selection" }) }),
       // y-prosemirror's typings resolve their own prosemirror-state copy, so its plugin and commands are cast at this seam.
       yUndoPlugin() as unknown as Plugin,
       keymap({ "Mod-z": undoCommand as unknown as Command, "Mod-Shift-z": redoCommand as unknown as Command, "Mod-y": redoCommand as unknown as Command }),

@@ -53,6 +53,24 @@ function runAction(options: ServeProjectChatOptions, message: Action): Promise<u
   }
 }
 
+/** The typing presence of the user, applied in the order the page sent it. */
+function createPresenceSetter(
+  options: ServeProjectChatOptions,
+  isStopped: () => boolean,
+  fail: (action: string, error: unknown) => void,
+): (typing: boolean | null) => void {
+  const { presence } = options;
+  let presenceTail: Promise<void> = Promise.resolve();
+  return (typing) => {
+    // INVARIANT: presence applies in page order, so a typing:false never lands before the typing:true it follows.
+    presenceTail = presenceTail.then(() => {
+      // TRAP: the chat may have closed while an earlier apply ran; a late conversation would outlive the clear.
+      if (isStopped() && typing !== null) { return; }
+      presence?.set(typing === null ? null : typing && valueOf(options.canWrite));
+    }).catch((error: unknown) => fail("Show typing", error));
+  };
+}
+
 /** @returns the stop, which clears the user's conversation in presence. */
 export function serveProjectChat(options: ServeProjectChatOptions): () => void {
   const { end, store, projectDir, presence, logger } = options;
@@ -60,7 +78,6 @@ export function serveProjectChat(options: ServeProjectChatOptions): () => void {
   let stopped = false;
   let queued = false;
   let tail: Promise<void> = Promise.resolve();
-  let presenceTail: Promise<void> = Promise.resolve();
 
   const fail = (action: string, error: unknown): void => {
     const reason = formatError(error);
@@ -81,14 +98,7 @@ export function serveProjectChat(options: ServeProjectChatOptions): () => void {
     tail = tail.then(() => { queued = false; return postChat(); });
   };
   const postPeers = (): void => { if (opened && !stopped && presence) { end.post({ type: "projectChat.peers", peers: presence.peers() }); } };
-  const setPresence = (typing: boolean | null): void => {
-    // INVARIANT: presence applies in page order, so a typing:false never lands before the typing:true it follows.
-    presenceTail = presenceTail.then(() => {
-      // TRAP: the chat may have closed while an earlier apply ran; a late conversation would outlive the clear.
-      if (stopped && typing !== null) { return; }
-      presence?.set(typing === null ? null : typing && valueOf(options.canWrite));
-    }).catch((error: unknown) => fail("Show typing", error));
-  };
+  const setPresence = createPresenceSetter(options, () => stopped, fail);
 
   const stopMessages = end.subscribe((raw) => {
     const message = parseProjectChatToHost(raw);

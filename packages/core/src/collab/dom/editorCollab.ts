@@ -129,15 +129,16 @@ export function createPeerCursors(source: PeerCursorSource): Extension {
 
 export interface CollabExtensionsOptions {
   text: Y.Text;
-  presence: PresenceStore;
+  /** Where peers' selections are published and drawn; without it the editor binds the text and the undo only (a local replica has no peers). */
+  presence?: PresenceStore;
   /** POSIX path of the file in the project, as peers name it in their presence. */
   file: string;
-  /** This user's name shown on their cursor to peers. */
-  name: string;
+  /** This user's name shown on their cursor to peers; empty when absent. */
+  name?: string;
 }
 
 /** Publishes this user's selection whenever it or the document changes. */
-function publishSelection({ text, presence, file, name }: CollabExtensionsOptions): Extension {
+function publishSelection({ text, presence, file, name = "" }: CollabExtensionsOptions & { presence: PresenceStore }): Extension {
   const colour = derivePeerColour("", presence.awareness.clientID);
   const publish = (view: EditorView): void => {
     const { anchor, head } = view.state.selection.main;
@@ -151,7 +152,7 @@ function publishSelection({ text, presence, file, name }: CollabExtensionsOption
 }
 
 export function createCollabExtensions(options: CollabExtensionsOptions): Extension {
-  const { text } = options;
+  const { text, presence } = options;
   return [
     // INVARIANT: the bound Y.Text holds LF line ends only, so CodeMirror must not split or join on CR.
     EditorState.lineSeparator.of("\n"),
@@ -161,8 +162,7 @@ export function createCollabExtensions(options: CollabExtensionsOptions): Extens
     yCollab(text, null, { undoManager: new Y.UndoManager(text, { trackedOrigins: new Set() }) }),
     // TRAP: from core, y-codemirror.next's KeyBinding resolves to a copy of @codemirror/view that tsc treats as unrelated to ours; the shape is the same.
     keymap.of(SHARED_UNDO_KEYMAP),
-    publishSelection(options),
-    createRemoteCursors(options),
+    ...(presence ? [publishSelection({ ...options, presence }), createRemoteCursors({ ...options, presence })] : []),
   ];
 }
 

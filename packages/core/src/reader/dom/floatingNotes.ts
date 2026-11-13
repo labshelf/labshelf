@@ -9,7 +9,7 @@ import type { ReaderNote } from "../protocol/index.js";
 import { renderReaderIconButton } from "./elements.js";
 import { createNotePopover } from "../../ui/dom/widgets/index.js";
 import type { ReaderContext } from "./readerSession.js";
-import { readerNoteEditorFiles } from "./notesTab.js";
+import { readerNoteEditorFiles } from "./notesTabFiles.js";
 import { NoteQuote } from "./noteQuote.js";
 import { NoteDrafts } from "./noteDrafts.js";
 

@@ -91,7 +91,8 @@ describe("deck editor bundle size", () => {
 
   it("8.3e keeps the core deck editor code in a lazy chunk, not in the entry file", () => {
     const outputs = jsOutputs(deck);
-    const entry = outputs.find(([, output]) => output.entryPoint !== undefined);
+    // esbuild also marks each dynamic-import chunk with an entryPoint; the entry file is the one built from the webview entry.
+    const entry = outputs.find(([, output]) => output.entryPoint?.endsWith("deckEditorEntry.ts"));
     expect(entry).toBeDefined();
     const eager = staticClosure(deck, entry![0]);
     const holdsEditor = (output: MetaOutput) =>

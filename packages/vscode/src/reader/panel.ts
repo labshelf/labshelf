@@ -7,7 +7,8 @@ import {
   ReaderHostController,
   answerNoteFileRequest,
   createPaperFiles,
-  normalizeReaderPrefs,
+  type ConsultInbound,
+  type ConsultOutbound,
   type ExportAnnotationsPorts,
   type HostToWebview,
   type ILogger,
@@ -22,7 +23,6 @@ import {
   type ReaderHostPorts,
   type CiteReply,
   type CiteRequest,
-  type ReaderPrefs,
   type ReaderSidecarStore,
   type ReaderThemeStore,
   type RunCellPort,
@@ -30,7 +30,8 @@ import {
 } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
-import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
+import { followPaperNotes, followReaderSettings, getReaderPrefs, getReaderViewColumn } from "./followNotes.js";
+import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -97,32 +98,6 @@ export function createSidecarChangeSender(events: LibraryEvents, paperId: string
   };
 }
 
-const READER_CONFIG_SECTION = "labshelf.reader";
-
-const PREF_KEYS: readonly (keyof ReaderPrefs)[] = [
-  "vimKeys", "defaultZoom", "toolbarAutoHide", "restorePosition", "hoverPreviews", "hoverDelayMs", "citationStyle",
-];
-
-/**
- * Settings are user-editable JSON, so every value is validated (shared normalizeReaderPrefs) and falls back to its default.
- * @returns the current reader preferences.
- */
-function getReaderPrefs(): ReaderPrefs {
-  const cfg = vscode.workspace.getConfiguration(READER_CONFIG_SECTION);
-  const raw: Record<string, unknown> = {};
-  for (const key of PREF_KEYS) { raw[key] = cfg.get<unknown>(key); }
-  return normalizeReaderPrefs(raw);
-}
-
-/**
- * Whether the reader opens beside the current editor (ViewColumn.Two) or full-width in the active group (default).
- * @returns the view column to open the reader panel in.
- */
-function getReaderViewColumn(): vscode.ViewColumn {
-  const beside = vscode.workspace.getConfiguration(READER_CONFIG_SECTION).get<unknown>("openBeside");
-  return beside === true ? vscode.ViewColumn.Two : vscode.ViewColumn.Active;
-}
-
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
 const READER_VIEW_TYPE = "labshelfPdf";
 
@@ -146,6 +121,8 @@ export interface ReaderPanelDeps {
   extractEquation?: NonNullable<ReaderHostPorts["extractEquation"]>;
   /** The library's papers for the notes' From paper…; absent where PDF regions cannot be rendered (the web), and the reader hides it. */
   paperObjects?: NonNullable<ReaderHostPorts["paperObjects"]>;
+  /** Builds the panel's consult port over the panel's own post; absent where the reader offers no Consult (previews, version compare, the web). The panel disposes it when it closes. */
+  consult?: (post: (message: ConsultInbound) => void) => { handle(message: ConsultOutbound): Promise<void>; dispose(): void };
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -185,6 +162,8 @@ export class ReaderPanel {
   private _disposed = false;
   private _closed = false;
   private _closeOut: () => void = () => {};
+  /** This panel's consult port, released in the close-out; absent without a consult factory. */
+  private readonly _consult: ReturnType<NonNullable<ReaderPanelDeps["consult"]>> | undefined;
 
   /** Drives the reader of this panel: page jumps, reloads, build status and revealed points. */
   readonly controller: ReaderHostController;
@@ -246,6 +225,8 @@ export class ReaderPanel {
   private constructor(panel: vscode.WebviewPanel, deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null) {
     const { paper } = source;
     this._panel = panel;
+    this._consult = deps.consult?.((message) => this._post(message));
+    const consult = this._consult;
     this.controller = new ReaderHostController({
       paper,
       store: source.store,
@@ -265,6 +246,7 @@ export class ReaderPanel {
       ...(deps.restartCell ? { restartCell: deps.restartCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
       ...(deps.extractEquation ? { extractEquation: deps.extractEquation } : {}),
       ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
+      ...(consult ? { consult: { handle: (message: ConsultOutbound) => consult.handle(message) } } : {}),
       ...(deps.noteFileIo ? { noteFiles: (request: NoteFileRequest) => answerNoteFileRequest(deps.noteFileIo!, paper.path, request) } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
@@ -318,12 +300,12 @@ export class ReaderPanel {
   }
 
   private _subscribe(source: ReaderSource): void {
-    this._disposables.push(onAutoReaderThemeChange((theme) => {
-      this.controller.onAutoThemeChange(theme);
-    }));
-    this._disposables.push(vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration(READER_CONFIG_SECTION)) { this.controller.onPrefsChange(); }
-    }));
+    this._disposables.push(...followReaderSettings(this.controller));
+
+    // The reader's notes follow the paper's notes.qmd, whichever editor changes it; refreshNotes is deduped.
+    if (source.notes && !source.preview) {
+      this._disposables.push(followPaperNotes(source.paper.path, () => void this.controller.refreshNotes()));
+    }
 
     this._panel.onDidChangeViewState((e) => {
       if (e.webviewPanel.active) {
@@ -339,6 +321,7 @@ export class ReaderPanel {
       if (this._closed) { return; }
       this._closed = true;
       source.onClosed?.();
+      this._consult?.dispose();
       openPanels.delete(source.key);
       if (ReaderPanel.activePanel === this) { ReaderPanel.activePanel = undefined; }
     };

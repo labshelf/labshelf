@@ -44,78 +44,80 @@ export interface BlockButtonOptions<T extends BlockSpan> {
   readOnly?: boolean;
 }
 
-/** A button over the hovered block, or the one holding the cursor while the editor has the focus. */
-export function blockButton<T extends BlockSpan>(options: BlockButtonOptions<T>): Extension {
-  class BlockButtonView {
-    private spans: T[];
-    private hovered: T | null = null;
-    private readonly button: HTMLButtonElement;
-    private readonly onMove = (event: MouseEvent): void => {
-      const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
-      const next = pos === null ? null : this.spanAt(pos);
-      if (next !== this.hovered) { this.hovered = next; this.place(this.target()); }
-    };
-    private readonly onLeave = (event: MouseEvent): void => {
-      if (event.relatedTarget === this.button) return;
+/** The plugin behind `blockButton`: one floating button per editor. */
+class BlockButtonView<T extends BlockSpan> {
+  private spans: T[];
+  private hovered: T | null = null;
+  private readonly button: HTMLButtonElement;
+  private readonly onMove = (event: MouseEvent): void => {
+    const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
+    const next = pos === null ? null : this.spanAt(pos);
+    if (next !== this.hovered) { this.hovered = next; this.place(this.target()); }
+  };
+  private readonly onLeave = (event: MouseEvent): void => {
+    if (event.relatedTarget === this.button) return;
+    this.hovered = null;
+    this.place(null);
+  };
+  private readonly onScroll = (): void => this.place(this.target());
+
+  constructor(private readonly view: EditorView, private readonly options: BlockButtonOptions<T>) {
+    this.spans = this.options.spans(view.state.doc.toString());
+    this.button = renderElement("button", { type: "button", class: this.options.className, title: this.options.title, html: `${renderIcon(this.options.icon)}<span>${this.options.label}</span>` }) as HTMLButtonElement;
+    this.button.hidden = true;
+    const root = view.dom.getRootNode();
+    (root instanceof ShadowRoot ? root : document.body).append(this.button);
+    // The editor keeps its focus and selection when the button is pressed.
+    this.button.addEventListener("mousedown", (event) => event.preventDefault());
+    this.button.addEventListener("click", () => {
+      const span = this.active();
       this.hovered = null;
       this.place(null);
-    };
-    private readonly onScroll = (): void => this.place(this.target());
-
-    constructor(private readonly view: EditorView) {
-      this.spans = options.spans(view.state.doc.toString());
-      this.button = renderElement("button", { type: "button", class: options.className, title: options.title, html: `${renderIcon(options.icon)}<span>${options.label}</span>` }) as HTMLButtonElement;
-      this.button.hidden = true;
-      const root = view.dom.getRootNode();
-      (root instanceof ShadowRoot ? root : document.body).append(this.button);
-      // The editor keeps its focus and selection when the button is pressed.
-      this.button.addEventListener("mousedown", (event) => event.preventDefault());
-      this.button.addEventListener("click", () => {
-        const span = this.active();
-        this.hovered = null;
-        this.place(null);
-        if (span) options.run(view, span);
-      });
-      this.button.addEventListener("mouseleave", (event) => { if (!view.dom.contains(event.relatedTarget as Node | null)) { this.hovered = null; this.place(null); } });
-      view.dom.addEventListener("mousemove", this.onMove);
-      view.dom.addEventListener("mouseleave", this.onLeave);
-      window.addEventListener("scroll", this.onScroll, true);
-      window.addEventListener("resize", this.onScroll);
-    }
-
-    private spanAt(pos: number): T | null {
-      return this.spans.find((s) => pos >= s.from && pos <= s.to) ?? null;
-    }
-
-    private active(): T | null {
-      return activeBlock(this.view, this.hovered, (pos) => this.spanAt(pos), options.readOnly);
-    }
-
-    private target(): DOMRect | null {
-      const span = this.active();
-      return span && blockBox(this.view, span);
-    }
-
-    private place(rect: DOMRect | null): void {
-      const visible = rect !== null && rect.bottom > 0 && rect.top < window.innerHeight;
-      this.button.hidden = !visible;
-      if (!visible) return;
-      this.button.style.top = `${Math.max(EDGE, rect.top + EDGE)}px`;
-      this.button.style.left = `${rect.right - 8 - this.button.offsetWidth - EDGE}px`;
-    }
-
-    update(update: ViewUpdate): void {
-      if (update.docChanged) { this.spans = options.spans(update.state.doc.toString()); this.hovered = null; }
-      remeasure(update, this, () => this.target(), (rect) => this.place(rect));
-    }
-
-    destroy(): void {
-      this.view.dom.removeEventListener("mousemove", this.onMove);
-      this.view.dom.removeEventListener("mouseleave", this.onLeave);
-      window.removeEventListener("scroll", this.onScroll, true);
-      window.removeEventListener("resize", this.onScroll);
-      this.button.remove();
-    }
+      if (span) this.options.run(view, span);
+    });
+    this.button.addEventListener("mouseleave", (event) => { if (!view.dom.contains(event.relatedTarget as Node | null)) { this.hovered = null; this.place(null); } });
+    view.dom.addEventListener("mousemove", this.onMove);
+    view.dom.addEventListener("mouseleave", this.onLeave);
+    window.addEventListener("scroll", this.onScroll, true);
+    window.addEventListener("resize", this.onScroll);
   }
-  return ViewPlugin.fromClass(BlockButtonView);
+
+  private spanAt(pos: number): T | null {
+    return this.spans.find((s) => pos >= s.from && pos <= s.to) ?? null;
+  }
+
+  private active(): T | null {
+    return activeBlock(this.view, this.hovered, (pos) => this.spanAt(pos), this.options.readOnly);
+  }
+
+  private target(): DOMRect | null {
+    const span = this.active();
+    return span && blockBox(this.view, span);
+  }
+
+  private place(rect: DOMRect | null): void {
+    const visible = rect !== null && rect.bottom > 0 && rect.top < window.innerHeight;
+    this.button.hidden = !visible;
+    if (!visible) return;
+    this.button.style.top = `${Math.max(EDGE, rect.top + EDGE)}px`;
+    this.button.style.left = `${rect.right - 8 - this.button.offsetWidth - EDGE}px`;
+  }
+
+  update(update: ViewUpdate): void {
+    if (update.docChanged) { this.spans = this.options.spans(update.state.doc.toString()); this.hovered = null; }
+    remeasure(update, this, () => this.target(), (rect) => this.place(rect));
+  }
+
+  destroy(): void {
+    this.view.dom.removeEventListener("mousemove", this.onMove);
+    this.view.dom.removeEventListener("mouseleave", this.onLeave);
+    window.removeEventListener("scroll", this.onScroll, true);
+    window.removeEventListener("resize", this.onScroll);
+    this.button.remove();
+  }
+}
+
+/** A button over the hovered block, or the one holding the cursor while the editor has the focus. */
+export function blockButton<T extends BlockSpan>(options: BlockButtonOptions<T>): Extension {
+  return ViewPlugin.define((view) => new BlockButtonView(view, options));
 }

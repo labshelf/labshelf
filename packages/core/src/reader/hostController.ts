@@ -9,9 +9,8 @@ import {
   type HostToWebview, type ReaderNote, type WebviewToHost,
 } from "./protocol/index.js";
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
-import { noteHandlers } from "./noteMessages.js";
+import { loadReaderNotes, noteHandlers, paperObjectHandlers } from "./noteMessages.js";
 import { equationHandlers } from "./equationMessages.js";
-import { paperObjectHandlers } from "./paperObjectMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts, type ResolvedTheme } from "./hostPorts.js";
 
 const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...paperObjectHandlers, ...equationHandlers, ...shareHandlers, ...previewHandlers };
@@ -148,6 +147,16 @@ export class ReaderHostController {
   async refreshAnnotations(): Promise<void> {
     if (!this.state.ready) { return; }
     this.pushAnnotations(await this.ports.store.getAnnotations(this.ports.paper.id), false);
+  }
+
+  /**
+   * Re-reads the paper's notes and pushes them if they changed, e.g. after another tab edited notes.qmd. The webview's draft
+   * rules decide whether an open floating note or notes tab takes the new body.
+   * @returns resolves once the notes were read and any change was posted.
+   */
+  async refreshNotes(): Promise<void> {
+    if (!this.state.ready) { return; }
+    this.pushNotes(await loadReaderNotes(this.ports.notes, this.ports.paper.id), false);
   }
 
   // The reader drops these before it has laid out the document, so they wait for `ready`; only the latest of a type matters.

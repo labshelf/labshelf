@@ -7,9 +7,17 @@ import * as vscode from "vscode";
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { registerWritingView } from "../../src/activation/registerWritingView";
 import type { LibraryRootController } from "../../src/activation/index";
-import { registerNoteLinks, type RegisterPlatformWriting } from "../../src/writing/index";
+import { registerCodeLinks, registerNoteLinks, type RegisterPlatformWriting } from "../../src/writing/index";
+import { registerOutputLinks } from "../../src/writing/outputs/index";
+import { createLibraryEvents } from "../../src/library/index";
 import { registerNodeWriting } from "../../src/activation/node/desktopPlatform";
 import { fakeLogger, fakeProjectData } from "../support/writingFixtures";
+
+// The shared vscode mock has no languages.registerCodeLensProvider, which the code-link and output-link lenses use.
+jest.mock("vscode", () => {
+  const actual = jest.requireActual("vscode");
+  return { ...actual, languages: { ...actual.languages, registerCodeLensProvider: jest.fn(() => ({ dispose() {} })) } };
+});
 
 const manifest = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8")) as {
   contributes: { commands: { command: string; enablement?: string }[]; menus: Record<string, { command: string; when?: string }[]> & { commandPalette: { command: string; when?: string }[] }; views: { labshelfContainer: { id: string }[] } };
@@ -27,12 +35,14 @@ function setup(root: string | undefined, register: RegisterPlatformWriting = fak
     currentServices: () => (root ? { logger: fakeLogger() } : null),
     onDidChangeRoot: emitter.event,
     require: jest.fn(async () => null),
+    events: createLibraryEvents(),
   } as unknown as LibraryRootController;
   const context = {
     subscriptions: [],
     globalStorageUri: vscode.Uri.file("/storage"),
     extension: { packageJSON: { version: "0.0.0" } },
     workspaceState: { get: () => undefined, update: jest.fn(async () => {}) },
+    globalState: { get: () => undefined, update: jest.fn(async () => {}) },
   };
   const adapters = {
     paths: path, uriOf: (target: string) => vscode.Uri.file(target), fs: new NodeLibraryFileSystem(), createProjectData: () => data, createProjectWriteTracking: () => ({ fs: new NodeLibraryFileSystem(), beforeSave: async () => {}, afterSave: async () => {} }), deviceLayout: () => { throw new Error("The fake project data reads no device dirs"); },
@@ -41,6 +51,10 @@ function setup(root: string | undefined, register: RegisterPlatformWriting = fak
   const writing = registerWritingView(context as unknown as vscode.ExtensionContext, controller, adapters, register, { projectSelected: jest.fn(), projectsActivated: jest.fn() });
   // The extension registers the note-link commands next to the writing view.
   registerNoteLinks(context as unknown as vscode.ExtensionContext, { projects: writing.projects, notes: writing.notes, logger: writing.logger, library: () => undefined });
+  // So are the code-link commands and, where the platform reads source folders, the linked-output commands.
+  registerCodeLinks(context as unknown as vscode.ExtensionContext, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
+  const sources = { portFor: jest.fn(), onDidChange: new vscode.EventEmitter<void>().event };
+  registerOutputLinks(context as unknown as vscode.ExtensionContext, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource, sources });
   return { emitter, listProjects: data.listProjects };
 }
 

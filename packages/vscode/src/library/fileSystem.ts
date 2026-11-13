@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { SIDECAR_FILE, createDebouncer, createLibraryLayout, formatError, isExternalChangeNoise } from "@labshelf/core";
 import type { Debouncer, LibraryFileSystem, LibraryLayout, LocalStat, PathOps } from "@labshelf/core";
 import { disposeAll } from "../disposables/index.js";
+import { openDocumentOf, writeThroughDocument } from "../localSync/index.js";
 
 
 const isNotFound = (error: unknown): boolean => (error as { code?: string }).code === "FileNotFound";
@@ -41,7 +42,9 @@ export class VscodeFileSystem implements LibraryFileSystem {
     }
   }
 
+  // A file open in this window is written through its document, so the editor never shows a "file is newer" conflict.
   async writeText(filePath: string, content: string): Promise<void> {
+    if (await writeThroughDocument(this.uriOf(filePath), content)) { return; }
     await this.writeFile(filePath, new TextEncoder().encode(content));
   }
 
@@ -71,7 +74,10 @@ export class VscodeFileSystem implements LibraryFileSystem {
     return insideLibrary ? this.tmpDir : this.paths.dirname(filePath);
   }
 
+  // An open document's text, unsaved edits included, is the live copy.
   async readText(filePath: string): Promise<string> {
+    const document = openDocumentOf(this.uriOf(filePath));
+    if (document) { return document.getText(); }
     return new TextDecoder("utf-8", { ignoreBOM: true }).decode(await this.readFile(filePath));
   }
 

@@ -371,6 +371,9 @@ importers:
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
+      node-diff3:
+        specifier: ^3.2.1
+        version: 3.2.1
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289

@@ -62,6 +62,13 @@ function readBody(fragment: Y.XmlFragment, tail: ItemTail): string {
   return docToBody(node);
 }
 
+/** The file text of item `key`'s body, or undefined when the doc holds no fragment for it. */
+export function readQmdItemBody(doc: Y.Doc, key: string): string | undefined {
+  const parts = readParts(doc, false);
+  const fragment = parts?.bodies.get(key);
+  return parts && fragment ? readBody(fragment, readTail(parts.tails.get(key))) : undefined;
+}
+
 /** The file text the doc stands for; a key listed twice (two peers adding the same item) is written once. */
 export function readQmdDocText(doc: Y.Doc): string {
   const parts = readParts(doc, false);
@@ -118,11 +125,48 @@ function keySegments(segments: readonly Segment[]): KeyedSegment[] {
   });
 }
 
+function tailOf(node: Node): Omit<ItemTail, "close"> {
+  const { eol, trailing, unterminated } = node.attrs as { eol: string; trailing: string; unterminated: boolean };
+  return { eol, trailing, unterminated };
+}
+
 function fillFragment(fragment: Y.XmlFragment, body: string): Omit<ItemTail, "close"> {
   const node = bodyToDoc(body);
   prosemirrorJSONToYXmlFragment(qmdSchema, node.toJSON(), fragment);
-  const { eol, trailing, unterminated } = node.attrs as { eol: string; trailing: string; unterminated: boolean };
-  return { eol, trailing, unterminated };
+  return tailOf(node);
+}
+
+/** Y types standing for `blocks`, not yet in any doc: built in a scratch doc and cloned. */
+function createBlockTypes(blocks: readonly Node[]): (Y.XmlElement | Y.XmlText)[] {
+  if (blocks.length === 0) { return []; }
+  const scratch = new Y.Doc().getXmlFragment("blocks");
+  prosemirrorJSONToYXmlFragment(qmdSchema, { type: "doc", content: blocks.map((block) => block.toJSON()) }, scratch);
+  return scratch.toArray().map((child) => child.clone() as Y.XmlElement | Y.XmlText);
+}
+
+/**
+ * Makes `fragment` hold `body` in place: the top-level blocks equal at the start and at the end of the old and new
+ * body stay as they are, the span between is deleted and the new blocks inserted.
+ */
+function updateFragment(fragment: Y.XmlFragment, oldTail: ItemTail, body: string): Omit<ItemTail, "close"> {
+  const next = bodyToDoc(body);
+  const json = yXmlFragmentToProsemirrorJSON(fragment) as { type: string; content?: unknown[] };
+  const old = Node.fromJSON(qmdSchema, { ...json, attrs: { eol: oldTail.eol, trailing: oldTail.trailing, unterminated: oldTail.unterminated } });
+  // A fragment whose children do not map one to one onto the blocks is rewritten whole.
+  const oldCount = old.childCount === fragment.length ? old.childCount : 0;
+  if (oldCount === 0 && fragment.length > 0) { fragment.delete(0, fragment.length); }
+  const newCount = next.childCount;
+  let head = 0;
+  while (head < oldCount && head < newCount && old.child(head).eq(next.child(head))) { head++; }
+  let tail = 0;
+  while (tail < oldCount - head && tail < newCount - head && old.child(oldCount - 1 - tail).eq(next.child(newCount - 1 - tail))) { tail++; }
+  const removed = oldCount - head - tail;
+  if (removed > 0) { fragment.delete(head, removed); }
+  const added: Node[] = [];
+  for (let index = head; index < newCount - tail; index++) { added.push(next.child(index)); }
+  const types = createBlockTypes(added);
+  if (types.length > 0) { fragment.insert(head, types); }
+  return tailOf(next);
 }
 
 /** Changes the order so it lists `next`: removes what left, inserts what came, and rewrites it whole only on a reorder. */
@@ -147,7 +191,8 @@ function updateOrder(order: Y.Array<string>, next: readonly string[]): void {
 
 /**
  * Makes the doc stand for `text` with an item-level diff in one transaction under `origin`: added, removed and moved
- * segments change the order, a changed fence line or loose text is set, and only a changed body gets a new fragment.
+ * segments change the order, a changed fence line or loose text is set, and a changed body is updated in its held
+ * fragment (only a key without one gets a new fragment), so editors bound to the fragment stay attached.
  */
 export function setQmdDocText(doc: Y.Doc, text: string, origin: unknown): void {
   if (readQmdDocText(doc) === text) { return; }
@@ -169,10 +214,12 @@ export function setQmdDocText(doc: Y.Doc, text: string, origin: unknown): void {
       const held = parts.bodies.get(key);
       const heldTail = readTail(parts.tails.get(key));
       let tail: ItemTail = { ...heldTail, close: segment.close };
-      if (!held || readBody(held, heldTail) !== segment.body) {
+      if (!held) {
         const fragment = new Y.XmlFragment();
         parts.bodies.set(key, fragment);
         tail = { ...fillFragment(fragment, segment.body), close: segment.close };
+      } else if (readBody(held, heldTail) !== segment.body) {
+        tail = { ...updateFragment(held, heldTail, segment.body), close: segment.close };
       }
       const json = JSON.stringify(tail);
       if (parts.tails.get(key) !== json) { parts.tails.set(key, json); }

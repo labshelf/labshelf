@@ -26,6 +26,16 @@ function mountSetupCard(body: HTMLElement, helperProject: HelperProject, logger:
   });
 }
 
+/** The deck the build is of, with a talk's slides: its pages carry its notes only by the page map of a build of it in this page. */
+async function deckOfBuild(fs: { readText(path: string): Promise<string> }, projectId: string, build: { folder: string; format?: string | undefined; main: string } | undefined): Promise<PreviewDeck | undefined> {
+  if (!build) return undefined;
+  const { main } = build;
+  const text = await fs.readText(`${build.folder}/${main}`);
+  const found = describeSourceDeck(build.format === "typst" ? "typst" : "latex", main, text);
+  const pages = found?.kind === "talk" ? readTalkPages(lastDeckPageMap(projectId, main), main, text) : undefined;
+  return found && (pages ? { ...found, slideOfPage: pages.slideOfPage } : found);
+}
+
 export const mountTab: TabModule["mountTab"] = (host, params, { project, logger, fs, workspace }) => {
   const { helperProject, session } = project();
   const projectId = params["projectId"] ?? "";
@@ -47,14 +57,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     const limits: PreviewLimits = { ...ready?.settings.check };
     const options = buildOptionsOf(ready?.settings, { autoCompile, haltOnError });
     const main = ready?.main;
-    // A talk's pages carry its notes only by the page map of a build of it in this page.
-    const deck = async (): Promise<PreviewDeck | undefined> => {
-      if (!ready || !main) return undefined;
-      const text = await fs.readText(`${ready.folder}/${main}`);
-      const found = describeSourceDeck(ready.settings.format === "typst" ? "typst" : "latex", main, text);
-      const pages = found?.kind === "talk" ? readTalkPages(lastDeckPageMap(projectId, main), main, text) : undefined;
-      return found && (pages ? { ...found, slideOfPage: pages.slideOfPage } : found);
-    };
+    const deck = (): Promise<PreviewDeck | undefined> => deckOfBuild(fs, projectId, ready && main ? { folder: ready.folder, format: ready.settings.format, main } : undefined);
     const follow = watchBuilds(helperProject, frame, { id: projectId, main, limits: () => limits, options: () => options, deck }, logger);
     const offRequest = frame.onRequest(createPreviewRequestHandler({
       project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject, openAudience: openDeckAudienceTab,

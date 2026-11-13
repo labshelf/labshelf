@@ -112,6 +112,23 @@ function cachedPerPaper<V>(make: (paperId: string) => Promise<V>, drop?: (value:
   };
 }
 
+/** The flattened arXiv TeX of a paper, kept per paper; null when the paper has none. */
+function cachedEprintTex(
+  eprint: NonNullable<LibraryPaperObjectsDeps<PdfTextSource>["eprint"]>,
+  recordOf: (paperId: string) => Promise<PaperRecord | undefined | null>,
+  logger: LibraryPaperObjectsDeps<PdfTextSource>["logger"],
+): (paperId: string) => Promise<string | null> {
+  return cachedPerPaper(async (paperId): Promise<string | null> => {
+    const record = await recordOf(paperId);
+    const arxivId = record ? arxivIdOfRecord(record) : undefined;
+    if (arxivId === undefined) return null;
+    const files = await loadEprint(arxivId, { fetch: eprint.fetch, cache: eprint.cache, logger });
+    if (files.kind !== "tex") return null;
+    const main = findMainFile(files.files);
+    return main === undefined ? null : flattenSource(files.files, main);
+  });
+}
+
 /** The "From paper…" port over one library: the composition the browser and VS Code share. */
 export function createLibraryPaperObjects<D extends PdfTextSource>(deps: LibraryPaperObjectsDeps<D>): PaperObjectsPort {
   const { logger } = deps;
@@ -139,16 +156,7 @@ export function createLibraryPaperObjects<D extends PdfTextSource>(deps: Library
     ? { extract: async (request, onProgress, signal) => (await equationPortOf(request.paperId)).extract(request, onProgress, signal) }
     : undefined;
 
-  const eprint = deps.eprint;
-  const eprintTex = eprint ? cachedPerPaper(async (paperId): Promise<string | null> => {
-    const record = await deps.record(paperId);
-    const arxivId = record ? arxivIdOfRecord(record) : undefined;
-    if (arxivId === undefined) return null;
-    const files = await loadEprint(arxivId, { fetch: eprint.fetch, cache: eprint.cache, logger });
-    if (files.kind !== "tex") return null;
-    const main = findMainFile(files.files);
-    return main === undefined ? null : flattenSource(files.files, main);
-  }) : undefined;
+  const eprintTex = deps.eprint ? cachedEprintTex(deps.eprint, deps.record, logger) : undefined;
 
   return createPaperObjectService({
     papers: async (query) => rankPaperChoices(await deps.records(), query),

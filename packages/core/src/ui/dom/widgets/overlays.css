@@ -210,3 +210,68 @@
 .ls-note-popover :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 /* The text being typed in is not framed: the caret shows where typing goes. */
 .ls-note-popover .ProseMirror:focus-visible, .ls-note-popover .ProseMirror:focus { outline: none; }
+
+/* Floating windows (floatingWindow.ts): non-modal cards the user drags by the head and sizes by the corner grip (320x220 up to 95vw by 90vh).
+   Position, size and stacking are set through element.style; the front one has .is-front. */
+.ls-floating-window {
+  position: fixed; z-index: 800; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;
+  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-xl, var(--ls-radius-lg)); box-shadow: var(--ls-widget-shadow);
+  color: var(--ls-fg); font-family: var(--ls-font); animation: ls-pop-menu var(--ls-fast) ease-out;
+}
+.ls-floating-window.is-front { border-color: var(--ls-focus); }
+.ls-floating-window-head {
+  display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4);
+  border-bottom: 1px solid var(--ls-border); color: var(--ls-desc); font-size: var(--ls-text-sm); cursor: grab; user-select: none; touch-action: none;
+}
+.ls-floating-window-head:active { cursor: grabbing; }
+.ls-floating-window-icon { display: inline-flex; flex: none; }
+.ls-floating-window-icon svg, .ls-floating-window-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); vertical-align: middle; }
+.ls-floating-window-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ls-fg); font-weight: 600; }
+.ls-floating-window-actions { display: flex; align-items: center; gap: var(--ls-space-1); margin-left: auto; }
+.ls-floating-window-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: var(--ls-radius); background: none; color: var(--ls-desc); cursor: pointer;
+}
+.ls-floating-window-btn:hover, .ls-floating-window-btn:focus-visible { background: var(--ls-list-hover); color: var(--ls-fg); outline: none; }
+.ls-floating-window-body { flex: 1; min-height: 0; overflow: auto; }
+.ls-floating-window-resize {
+  position: absolute; right: 0; bottom: 0; z-index: 2; width: 14px; height: 14px; cursor: nwse-resize; touch-action: none; opacity: .5;
+  background: linear-gradient(135deg, transparent 55%, var(--ls-desc) 55%, var(--ls-desc) 62%, transparent 62%, transparent 75%, var(--ls-desc) 75%, var(--ls-desc) 82%, transparent 82%);
+}
+.ls-floating-window-resize:hover, .ls-floating-window-resize:focus-visible { opacity: 1; }
+.ls-floating-window :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .ls-floating-window { animation: none; } }
+
+/* Consult chooser (consultChooser.ts): a segmented control of the four lists in the picker row. */
+.ls-consult-kinds { display: inline-flex; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); overflow: hidden; }
+.ls-consult-kind {
+  padding: 0 var(--ls-space-4); border: 0; border-right: 1px solid var(--ls-border); background: none; color: var(--ls-desc);
+  font: inherit; font-size: var(--ls-text-sm); line-height: 24px; cursor: pointer;
+}
+.ls-consult-kind:last-child { border-right: 0; }
+.ls-consult-kind:hover { background: var(--ls-list-hover); color: var(--ls-fg); }
+.ls-consult-kind[aria-checked="true"] { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
+.ls-consult-kind:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.ls-consult-browse-slot { display: inline-flex; }
+
+/* Consult footer (consultFooter.ts): the editor's lowest bottom panel, the Consult button then a chip per open floating window. */
+.ls-consult-footer {
+  display: flex; align-items: center; gap: var(--ls-space-3); height: var(--ls-pane-footer-h); padding: 0 var(--ls-space-3); box-sizing: border-box;
+  font-size: var(--ls-text-sm); color: var(--ls-desc);
+}
+.ls-consult-button, .ls-consult-chip-main, .ls-consult-chip-close {
+  display: inline-flex; align-items: center; gap: var(--ls-space-2); border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.ls-consult-button { flex: none; height: var(--ls-row-h); padding: 0 var(--ls-space-2); border-radius: var(--ls-radius-sm); }
+.ls-consult-button:hover, .ls-consult-button:focus-visible { background: var(--ls-toolbar-hover); color: var(--ls-fg); outline: none; }
+.ls-consult-chips { display: flex; align-items: center; gap: var(--ls-space-2); min-width: 0; overflow: hidden; }
+.ls-consult-chip {
+  display: inline-flex; align-items: center; min-width: 0; max-width: 200px; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
+  color: var(--ls-fg);
+}
+.ls-consult-chip-main { min-width: 0; padding: 0 var(--ls-space-2) 0 var(--ls-space-3); border-radius: var(--ls-radius-lg) 0 0 var(--ls-radius-lg); line-height: 18px; }
+.ls-consult-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-consult-chip-close { justify-content: center; width: 18px; height: 18px; padding: 0; border-radius: var(--ls-radius-lg); color: var(--ls-desc); }
+.ls-consult-chip-main:hover, .ls-consult-chip-main:focus-visible, .ls-consult-chip-close:hover, .ls-consult-chip-close:focus-visible { background: var(--ls-list-hover); color: var(--ls-fg); outline: none; }
+.ls-consult-footer svg { width: var(--ls-text-md); height: var(--ls-text-md); flex: none; }
+.ls-consult-chip-icon { display: inline-flex; flex: none; }

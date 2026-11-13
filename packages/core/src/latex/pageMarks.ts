@@ -146,6 +146,11 @@ function wrapCommand(name: string, before: string, after: string): string {
 // without beamer, tikzposter, tcbposter or baposter compiles as before.
 // PLATFORM: `cmd/section/after` cannot be used: it lands before `\@startsection`'s `\@ifstar` and breaks every heading.
 export function createPageMarksPackage(): string {
+  return [...pageMarkUnits(), ...pageMarkPositions(), ...pageMarkBlocks(), ...pageMarkClasses()].join("\n");
+}
+
+/** The package header, the output file and the unit marks: sections and frames. */
+function pageMarkUnits(): string[] {
   return [
     "\\NeedsTeXFormat{LaTeX2e}",
     `\\ProvidesPackage{${PAGE_MARKS_PACKAGE}}[LabShelf page marks]`,
@@ -171,6 +176,12 @@ export function createPageMarksPackage(): string {
       + "\\global\\let\\lsmarks@divider\\@empty\\global\\let\\lsmarks@frameat\\lsmarks@tmp\\fi"
       + "\\global\\lsmarks@ordinal\\z@\\global\\let\\lsmarks@slide\\relax}",
     "\\AddToHook{env/frame/begin}{\\lsmarks@frame}",
+  ];
+}
+
+/** The page height and the saved positions of a point. */
+function pageMarkPositions(): string[] {
+  return [
     "\\ifdefined\\pdfsavepos\\let\\lsmarks@savepos\\pdfsavepos\\def\\lsmarks@x{\\the\\pdflastxpos}\\def\\lsmarks@y{\\the\\pdflastypos}"
       + "\\else\\ifdefined\\savepos\\let\\lsmarks@savepos\\savepos\\def\\lsmarks@x{\\the\\lastxpos}\\def\\lsmarks@y{\\the\\lastypos}"
       + "\\else\\let\\lsmarks@savepos\\relax\\fi\\fi",
@@ -181,6 +192,12 @@ export function createPageMarksPackage(): string {
       + "\\noexpand\\the\\ReadonlyShipoutCounter|\\noexpand\\the\\numexpr\\noexpand\\lsmarks@x+#2\\relax|\\noexpand\\the\\numexpr\\noexpand\\lsmarks@y+#3\\relax"
       + "|\\noexpand\\lsmarks@height}}\\lsmarks@tmp\\fi}",
     "\\def\\lsmarks@point#1{\\lsmarks@pointat{#1}00}",
+  ];
+}
+
+/** The block marks, and the beamer blocks that nest them. */
+function pageMarkBlocks(): string[] {
+  return [
     // A block inside a beamer frame counts its place in the frame's pass; each overlay is a new pass.
     "\\def\\lsmarks@pass{\\ifdefined\\beamer@slideinframe\\edef\\lsmarks@tmp{\\the\\beamer@slideinframe}"
       + "\\ifx\\lsmarks@tmp\\lsmarks@slide\\else\\global\\lsmarks@ordinal\\z@\\global\\let\\lsmarks@slide\\lsmarks@tmp\\fi\\fi}",
@@ -195,6 +212,12 @@ export function createPageMarksPackage(): string {
       `\\AddToHook{env/${name}/begin}{\\iflsmarks@beamer\\lsmarks@vbegin\\fi}`,
       `\\AddToHook{env/${name}/after}{\\iflsmarks@beamer\\lsmarks@vend\\fi}`,
     ]),
+  ];
+}
+
+/** The poster classes' hooks, set at the start of the document, and the final empty line. */
+function pageMarkClasses(): string[] {
+  return [
     "\\AddToHook{env/posterboxenv/begin}{\\xdef\\lsmarks@pending{\\lsmarks@here}}",
     CORNERS,
     "\\AtBeginDocument{",
@@ -206,5 +229,5 @@ export function createPageMarksPackage(): string {
     "\\@ifclassloaded{baposter}{\\let\\lsmarks@headerbox\\headerbox\\def\\headerbox{\\lsmarks@block{0}\\lsmarks@headerbox}}{}",
     "}",
     "",
-  ].join("\n");
+  ];
 }

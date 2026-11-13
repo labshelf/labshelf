@@ -1,6 +1,7 @@
 // Applies the Spaces page's changes to the Space store: the Space mutations, and the note and thread item changes with the posts of the
 // file and folder lists they move.
-import type { HostToSpaces, SpaceMutation, SpaceQmdAction } from "./spacesProtocol.js";
+import type { SpaceMutation } from "./spaceMutationParse.js";
+import type { HostToSpaces, SpaceQmdAction } from "./spacesProtocol.js";
 import type { SpaceStore } from "./spaceStore.js";
 
 type Post = (message: HostToSpaces) => void;

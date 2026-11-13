@@ -55,6 +55,73 @@ function lineMove(before: string, after: string): (line: number) => number | und
   return (line) => (line <= head ? line : line > old.length - tail ? line + next.length - old.length : undefined);
 }
 
+/** A talk's slides and the section dividers between them, in page order; the tree's slides alone while unlinked. */
+function listUnits(tree: readonly SourceDeckNode[], linked: Linked | undefined): PageUnit[] {
+  if (!linked) return tree.flatMap((node, index) => (node.kind === "slide" ? [{ kind: "slide", index } as const] : []));
+  const units: PageUnit[] = [];
+  linked.slides.forEach((slide, i) => {
+    const section = linked.sections[i];
+    const last = units.at(-1);
+    if (slide !== undefined && !(last?.kind === "slide" && last.index === slide)) units.push({ kind: "slide", index: slide });
+    if (section && !(last?.kind === "section" && sameSection(last, section))) units.push({ kind: "section", page: i + 1, ...section });
+  });
+  // A slide the build did not ship (added since) still lists, after the units of the slides before it.
+  for (const [index, node] of tree.entries()) {
+    if (node.kind !== "slide" || units.some((unit) => unit.kind === "slide" && unit.index === index)) continue;
+    const slideBefore = (unit: PageUnit) => unit.kind === "slide" && unit.index < index;
+    let after = units.length - 1;
+    while (after >= 0 && !slideBefore(units[after]!)) after--;
+    units.splice(after + 1, 0, { kind: "slide", index });
+  }
+  return units;
+}
+
+/** The [column, block] path of the smallest block box holding the point; [] for none. */
+function smallestBlockAt(blocks: Linked["blocks"], point: { page: number; x: number; y: number }): SourceDeckPath {
+  let best: { path: SourceDeckPath; area: number } | undefined;
+  for (const { path, rect } of blocks) {
+    if (rect.page !== point.page || point.x < rect.left || point.x > rect.right || point.y < rect.top || point.y > rect.bottom) continue;
+    const area = (rect.right - rect.left) * (rect.bottom - rect.top);
+    if (!best || area < best.area) best = { path, area };
+  }
+  return best?.path ?? [];
+}
+
+type FileOf = (file: string) => string | undefined;
+
+const sameFile = (node: SourceDeckNode, file: string | undefined): boolean =>
+  file === undefined ? node.file === undefined : node.file !== undefined && sameSourcePath(node.file, file, "/");
+
+function slideOf(tree: readonly SourceDeckNode[], fileOf: FileOf, unit: DeckPageUnit): number | undefined {
+  const file = fileOf(unit.file);
+  const index = tree.findIndex((node) => node.kind === "slide" && node.line === unit.line && sameFile(node, file));
+  return index < 0 ? undefined : index;
+}
+
+function blockOf(tree: readonly SourceDeckNode[], fileOf: FileOf, file: string, line: number): SourceDeckPath | undefined {
+  const at = fileOf(file);
+  for (const [c, column] of tree.entries()) {
+    const b = (column.children ?? []).findIndex((node) => node.kind === "block" && node.line === line && sameFile(node, at));
+    if (column.kind === "column" && b >= 0) return [c, b];
+  }
+  return undefined;
+}
+
+/** Links a map to the tree it is read against: each page's slide or section and each poster block's box. */
+function linkMap(kind: DeckKind, map: DeckPageMap, tree: readonly SourceDeckNode[], fileOf: FileOf): Linked {
+  const slides = map.pages.map((unit) => (unit?.kind === "frame" ? slideOf(tree, fileOf, unit) : undefined));
+  const sections = map.pages.map((unit) => {
+    if (unit?.kind !== "section") return undefined;
+    const file = fileOf(unit.file);
+    return file === undefined ? { line: unit.line } : { file, line: unit.line };
+  });
+  const blocks = kind === "poster" ? map.blocks.flatMap(({ file, line, page, rect }) => {
+    const path = blockOf(tree, fileOf, file, line);
+    return path ? [{ path, rect: { page, ...rect } }] : [];
+  }) : [];
+  return { slides, sections, blocks };
+}
+
 export function createLinking(kind: DeckKind, mainPath: string): Linking {
   const folder = mainPath.includes("/") ? mainPath.slice(0, mainPath.lastIndexOf("/") + 1) : "";
   let tree: readonly SourceDeckNode[] = [];
@@ -62,39 +129,8 @@ export function createLinking(kind: DeckKind, mainPath: string): Linking {
   let linked: Linked | undefined;
 
   /** The project-relative file a map entry names (TeX names it from the main file's folder); undefined for the main file. */
-  const fileOf = (file: string): string | undefined => (sameSourcePath(folder + file, mainPath, "/") ? undefined : folder + file);
-  const sameFile = (node: SourceDeckNode, file: string | undefined): boolean =>
-    file === undefined ? node.file === undefined : node.file !== undefined && sameSourcePath(node.file, file, "/");
-
-  function slideOf(unit: DeckPageUnit): number | undefined {
-    const file = fileOf(unit.file);
-    const index = tree.findIndex((node) => node.kind === "slide" && node.line === unit.line && sameFile(node, file));
-    return index < 0 ? undefined : index;
-  }
-
-  function blockOf(file: string, line: number): SourceDeckPath | undefined {
-    const at = fileOf(file);
-    for (const [c, column] of tree.entries()) {
-      const b = (column.children ?? []).findIndex((node) => node.kind === "block" && node.line === line && sameFile(node, at));
-      if (column.kind === "column" && b >= 0) return [c, b];
-    }
-    return undefined;
-  }
-
-  function link(): Linked | undefined {
-    if (!map) return undefined;
-    const slides = map.pages.map((unit) => (unit?.kind === "frame" ? slideOf(unit) : undefined));
-    const sections = map.pages.map((unit) => {
-      if (unit?.kind !== "section") return undefined;
-      const file = fileOf(unit.file);
-      return file === undefined ? { line: unit.line } : { file, line: unit.line };
-    });
-    const blocks = kind === "poster" ? map.blocks.flatMap(({ file, line, page, rect }) => {
-      const path = blockOf(file, line);
-      return path ? [{ path, rect: { page, ...rect } }] : [];
-    }) : [];
-    return { slides, sections, blocks };
-  }
+  const fileOf: FileOf = (file) => (sameSourcePath(folder + file, mainPath, "/") ? undefined : folder + file);
+  const link = (): Linked | undefined => (map ? linkMap(kind, map, tree, fileOf) : undefined);
 
   return {
     reset(next, nextTree) { map = next; tree = nextTree; linked = link(); },
@@ -113,35 +149,11 @@ export function createLinking(kind: DeckKind, mainPath: string): Linking {
     slideOfPage: (page) => linked?.slides[page - 1],
     sectionOfPage: (page) => linked?.sections[page - 1],
     pageOfSection(section) { const page = linked?.sections.findIndex((at) => at !== undefined && sameSection(at, section)) ?? -1; return page < 0 ? undefined : page + 1; },
-    units() {
-      if (!linked) return tree.flatMap((node, index) => (node.kind === "slide" ? [{ kind: "slide", index } as const] : []));
-      const units: PageUnit[] = [];
-      linked.slides.forEach((slide, i) => {
-        const section = linked!.sections[i];
-        const last = units.at(-1);
-        if (slide !== undefined && !(last?.kind === "slide" && last.index === slide)) units.push({ kind: "slide", index: slide });
-        if (section && !(last?.kind === "section" && sameSection(last, section))) units.push({ kind: "section", page: i + 1, ...section });
-      });
-      // A slide the build did not ship (added since) still lists, after the units of the slides before it.
-      for (const [index, node] of tree.entries()) {
-        if (node.kind !== "slide" || units.some((unit) => unit.kind === "slide" && unit.index === index)) continue;
-        const after = units.findLastIndex((unit) => unit.kind === "slide" && unit.index < index);
-        units.splice(after + 1, 0, { kind: "slide", index });
-      }
-      return units;
-    },
+    units: () => listUnits(tree, linked),
     rectOf(path) {
       const key = path.slice(0, 2).join(".");
       return path.length >= 2 ? linked?.blocks.find((block) => block.path.join(".") === key)?.rect : undefined;
     },
-    blockAt(point) {
-      let best: { path: SourceDeckPath; area: number } | undefined;
-      for (const { path, rect } of linked?.blocks ?? []) {
-        if (rect.page !== point.page || point.x < rect.left || point.x > rect.right || point.y < rect.top || point.y > rect.bottom) continue;
-        const area = (rect.right - rect.left) * (rect.bottom - rect.top);
-        if (!best || area < best.area) best = { path, area };
-      }
-      return best?.path ?? [];
-    },
+    blockAt: (point) => smallestBlockAt(linked?.blocks ?? [], point),
   };
 }

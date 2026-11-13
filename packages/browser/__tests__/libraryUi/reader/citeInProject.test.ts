@@ -6,7 +6,7 @@ jest.mock("webextension-polyfill", () => ({
   tabs: { create: jest.fn(async () => ({})) },
 }));
 
-import { createBrowserReaderCiteIo, createReaderCite } from "../../../src/libraryUi/reader/citeInProject";
+import { createBrowserReaderCiteIo, createReaderCite } from "../../../src/writing/libraryCitation";
 import { onProjectFileChange } from "../../../src/writing/fileChanges";
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;

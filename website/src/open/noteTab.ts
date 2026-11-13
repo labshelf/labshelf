@@ -2,7 +2,9 @@
 import { createCellRuns, formatError, parseItemFile, serializeItemFile, setItemBody, type CellLanguage, type RunCellPort } from "@labshelf/core";
 import { createCellRunGroup, renderElement, showToast } from "@labshelf/core/dom";
 
+import { rebaseExternalText } from "./externalText.js";
 import type { MirrorFileSystem } from "./mirrorFileSystem.js";
+import { mirrorTextMerge } from "./mirrorText.js";
 import { BROWSER_CELL_NOTICE } from "./runtimes/index.js";
 
 /** The page's cell runner: one session per note key and language. */
@@ -22,11 +24,12 @@ export async function mountNoteFile(body: HTMLElement, options: { fs: MirrorFile
   const { mountQmdEditor } = await import("@labshelf/core/dom");
   body.textContent = "";
   const items = parseItemFile(latest).segments.flatMap((s) => s.kind === "item" ? [s.id] : []);
-  const bodyOf = (id: string | undefined): string | undefined => {
-    if (id === undefined) { return latest; }
-    const item = parseItemFile(latest).segments.find((s) => s.kind === "item" && s.id === id);
+  const bodyIn = (text: string, id: string | undefined): string | undefined => {
+    if (id === undefined) { return text; }
+    const item = parseItemFile(text).segments.find((s) => s.kind === "item" && s.id === id);
     return item?.kind === "item" ? item.body : undefined;
   };
+  const bodyOf = (id: string | undefined): string | undefined => bodyIn(latest, id);
   let warned = false;
   const save = (id: string | undefined, next: string): void => {
     latest = id === undefined ? next : serializeItemFile(setItemBody(parseItemFile(latest), id, next));
@@ -54,7 +57,17 @@ export async function mountNoteFile(body: HTMLElement, options: { fs: MirrorFile
     const editor = mountQmdEditor(holder, {
       body: bodyOf(id) ?? "", onChange: (next) => { save(id, next); }, onRunCell, ...(onRestartCell ? { onRestartCell } : {}),
     });
-    return editor;
+    return { id, editor };
   });
-  return { destroy: () => { for (const editor of editors) { editor.flush(); editor.destroy(); } group.clear(); } };
+  const unwatch = fs.watch(path, (change) => {
+    const next = rebaseExternalText(path, latest, change, mirrorTextMerge);
+    if (next === undefined) { return; }
+    const before = latest;
+    latest = next;
+    for (const { id, editor } of editors) {
+      const after = bodyOf(id);
+      if (after !== undefined && after !== bodyIn(before, id)) { editor.setBody(after); }
+    }
+  });
+  return { destroy: () => { unwatch(); for (const { editor } of editors) { editor.flush(); editor.destroy(); } group.clear(); } };
 }

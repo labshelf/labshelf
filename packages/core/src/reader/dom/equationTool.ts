@@ -3,7 +3,7 @@ import { bytesToBase64 } from "../../encoding/base64.js";
 import { MAX_EQUATION_PNG_BYTES } from "../protocol/messages.js";
 import type { PageRect } from "../textBoxPlacement.js";
 import { pageRectToPdfRegion, renderRegionPng, textInRegion, type PdfPageLike, type TextItemLike } from "./equationCrop.js";
-import { showDraft } from "./noteBoxes.js";
+import { showDraft } from "./noteBoxPlacement.js";
 import { beginPageDrag, trackPointer } from "./pageDrag.js";
 import type { ReaderContext } from "./readerSession.js";
 

@@ -19,6 +19,8 @@ type TabKind = "home" | "spaces" | "library" | "space";
 
 const PAPERS_INDEX = "index/papers.json";
 const NO_NOTES_NOTICE = "This paper has no notes in the remote library.";
+/** How often the open files are re-checked against the Mirror while the page is visible. */
+const RECHECK_MS = 30_000;
 
 const consoleLogger: ILogger = {
   log: async (level, module, message, context) => { if (level === "WARN" || level === "ERROR") { console.warn(`[${module}] ${message}`, context ?? ""); } },
@@ -140,10 +142,19 @@ export async function mountRemoteLibrary(root: HTMLElement, client: RemoteLibrar
   // PLATFORM: pagehide is the last event a closing page reliably gets; the edits waiting for their delay are sent then.
   const flush = (): void => { void fs.flush(); };
   window.addEventListener("pagehide", flush);
+  // The open files are re-checked against the Mirror when the page gets focus or becomes visible, and every 30 s while visible.
+  const recheck = (): void => { void fs.recheck(); };
+  const onVisible = (): void => { if (document.visibilityState === "visible") { recheck(); } };
+  window.addEventListener("focus", recheck);
+  document.addEventListener("visibilitychange", onVisible);
+  const recheckTimer = setInterval(onVisible, RECHECK_MS);
   openHome();
   return {
     dispose: () => {
       window.removeEventListener("pagehide", flush);
+      window.removeEventListener("focus", recheck);
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(recheckTimer);
       closeAllViews();
       exitFullscreen();
       sidebar?.dispose();

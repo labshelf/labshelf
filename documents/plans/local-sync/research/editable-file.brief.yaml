@@ -1,0 +1,19 @@
+schema: brief/v1
+area: EditableFile core port (consult window)
+question: "what exists to bind a CodeMirror text view or a qmd note view to a local-sync replica or a host SourceDocument"
+sha: 995c36a18
+reuse:
+  - {symbol: SourceDocument, path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "8-16", why: "VS Code channel {text, lineBreak, version, dirty, push, subscribe, save}; SourceEditorDeps.document"}
+  - {symbol: createDocumentExtensions, path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "179-192", why: "(document, clientID): Extension[]; ends with view.destroy()"}
+  - {symbol: documentSync, path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "175-177", why: "flush() before closing a view"}
+  - {symbol: createCollabExtensions, path: packages/core/src/collab/dom/editorCollab.ts, lines: "130-170", why: "{text: Y.Text, file, presence?} -> yCollab + undo; LF only"}
+  - {symbol: Replica, path: packages/core/src/localSync/replicaHub.ts, lines: "9-28", why: "{key, kind, doc, ready, text(), replace(), release()}; ReplicaKind, deriveReplicaKind"}
+  - {symbol: readFileText, path: packages/core/src/collab/sharedFiles.ts, lines: "63-64", why: "the Y.Text of a text replica's doc"}
+  - {symbol: NoteFileOptions, path: packages/core/src/qmd/dom/mountNoteFile.ts, lines: "31-69", why: "live?: {doc, persist} (NoteFileLive not exported); non-live text/save/create + handle.update"}
+  - {symbol: deriveCodeLanguage, path: packages/core/src/writing/codeLinks/codeLanguages.ts, lines: "55-60", why: "lexer name by extension, not a CodeMirror language"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/codePickDialog.ts, lines: "43-52", why: "read-only CodeMirror, no language extension"}
+  - {path: packages/vscode/src/writing/notesEditor/webview/notesEditorEntry.ts, lines: "50-80", why: "VS Code notes editor: non-live mountNoteFile, item save/create, whole-text update"}
+risks:
+  - "qmd has no document mode in VS Code: its EditableFile is the non-live mountNoteFile binding (text, save, create, subscribe to updates)."
+  - "mountSourceEditor applies LaTeX support to any non-.typ path; consult code views need their own thin CodeMirror view (session 8)."

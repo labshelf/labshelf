@@ -23,9 +23,10 @@ import { registerNoteLens } from "../writing/citations/index.js";
 import { registerCodeLinks, registerNoteLinks } from "../writing/index.js";
 import { registerOutputLinks } from "../writing/outputs/index.js";
 import { registerNotesEditor, type NotesEditorProviderDeps } from "../writing/notesEditor/index.js";
-import { createEditorPrefsHost } from "../writing/sourceEditor/index.js";
+import { createEditorPrefsHost, type EditorPrefsHost } from "../writing/sourceEditor/index.js";
 import { openPaperLinkText } from "../writing/index.js";
 import { registerDeckEditor } from "../writing/deckEditor/index.js";
+import { createDiskMerge, type DiskMerge } from "../localSync/index.js";
 import { registerProjectChat } from "../writing/projectChat/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
@@ -51,33 +52,11 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   let details: DetailsView | undefined;
   const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
-  registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
-  registerNoteLensOf(context, controller, writing);
-  const noteSource = registerLibraryNoteLinks(context, controller, writing);
-  registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
-  // This machine's folders of linked outputs' sources; none on the web.
-  const outputSources = platform.createOutputSources?.(context, writing.logger);
-  if (outputSources) { registerOutputLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource, sources: outputSources }); }
+  const { noteSource, outputSources } = registerWritingLinks(context, controller, platform, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   const paperObjects = paperObjectsOf(context, controller, platform);
-  // The editors' settings live in the open library's editor-prefs.json, which the other app and sync tools may change.
-  const editorPrefs = createEditorPrefsHost({
-    current: () => {
-      const services = controller.currentServices();
-      const root = controller.currentRoot()?.fsPath;
-      return services && root ? { store: services.editorPrefsStore, root } : undefined;
-    },
-    onDidChangeRoot: controller.onDidChangeRoot,
-  });
-  context.subscriptions.push(editorPrefs);
-  registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs, {
-    ...notesEditorLibrary(controller, adapters, paperObjects), editorPrefs,
-    openPaperLink: (href) => openPaperLinkText({ session: () => {
-      const services = controller.currentServices();
-      return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
-    } }, href),
-  });
+  const { editorPrefs, diskMerge } = registerLibraryEditors(context, controller, adapters, writing, cells, paperObjects);
   registerProjectChat(context, { session: writing.session, projects: writing.projects, logger: writing.logger });
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells, paperObjects);
   const { librarySidebar, showFolderInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
@@ -91,7 +70,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     ...cells,
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
-    editorPrefs, currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
+    editorPrefs, diskMerge, currentServices: () => controller.currentServices(), libraryRoot: () => controller.currentRoot(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     cite: createReaderCite({ projects: writing.projects, activeSource: writing.activeSource }), projects: writing.projects, activeSource: writing.activeSource,
     sourceEditor: { ...libraryEditorDeps(controller, noteSource, platform.createDictionaries?.(context, writing.logger)), ...(outputSources ? { outputSources } : {}) },
     ...(platform.createEquationPort ? { createEquationPort: equationPortOf(context, controller, platform) } : {}),
@@ -146,13 +125,53 @@ function notesEditorLibrary(controller: LibraryRootController, adapters: HostAda
   };
 }
 
+/** The project notes and the links a manuscript makes to notes, code and linked outputs; returns the note source and this machine's output sources. */
+function registerWritingLinks(context: vscode.ExtensionContext, controller: LibraryRootController, platform: ExtensionPlatform, writing: ReturnType<typeof registerWritingView>) {
+  registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
+  registerNoteLensOf(context, controller, writing);
+  const noteSource = registerLibraryNoteLinks(context, controller, writing);
+  registerCodeLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource });
+  // This machine's folders of linked outputs' sources; none on the web.
+  const outputSources = platform.createOutputSources?.(context, writing.logger);
+  if (outputSources) { registerOutputLinks(context, { projects: writing.projects, logger: writing.logger, activeSource: writing.activeSource, sources: outputSources }); }
+  return { noteSource, outputSources };
+}
+
+/** The editors' shared hosts (typing helpers and settings, the disk merge) and the custom editors that use them; returns the hosts for the reader and source editor. */
+function registerLibraryEditors(
+  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: ReturnType<typeof registerWritingView>,
+  cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, paperObjects: PaperObjectsPort | undefined,
+): { editorPrefs: EditorPrefsHost; diskMerge: DiskMerge } {
+  // The editors' settings live in the open library's editor-prefs.json, which the other app and sync tools may change.
+  const editorPrefs = createEditorPrefsHost({
+    current: () => {
+      const services = controller.currentServices();
+      const root = controller.currentRoot()?.fsPath;
+      return services && root ? { store: services.editorPrefsStore, root } : undefined;
+    },
+    onDidChangeRoot: controller.onDidChangeRoot,
+  });
+  context.subscriptions.push(editorPrefs);
+  // One merge of disk changes into dirty documents for every LabShelf editor.
+  const diskMerge = createDiskMerge({ textMerge: adapters.textMerge, logger: writing.logger });
+  context.subscriptions.push(diskMerge);
+  registerCustomEditors(context, writing, cells, adapters.reader.locatePdfjs, diskMerge, {
+    ...notesEditorLibrary(controller, adapters, paperObjects), editorPrefs,
+    openPaperLink: (href) => openPaperLinkText({ session: () => {
+      const services = controller.currentServices();
+      return services ? { listPapers: () => services.paperService.listPapers(), logger: services.logger } : undefined;
+    } }, href),
+  });
+  return { editorPrefs, diskMerge };
+}
+
 /** The LabShelf note editor and the deck editor, both custom editors hosted on the extension's webviews. */
 function registerCustomEditors(
-  context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator,
+  context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>, cells: NonNullable<Parameters<typeof registerNotesEditor>[1]["cells"]>, locatePdfjs: PdfjsLocator, diskMerge: DiskMerge,
   library: Pick<NotesEditorProviderDeps, "files" | "paperObjects" | "paperOf" | "editorPrefs" | "openPaperLink">,
 ): void {
-  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells, ...library });
-  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile, closePreview: writing.closePreview });
+  registerNotesEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, cells, diskMerge, ...library });
+  registerDeckEditor(context, { extensionUri: context.extensionUri, logger: writing.logger, diskMerge, projects: writing.projects, session: writing.session, locatePdfjs, recompile: writing.recompile, closePreview: writing.closePreview });
 }
 
 /** The commands that act on the open library's services, the sync guide and the AI commands. */

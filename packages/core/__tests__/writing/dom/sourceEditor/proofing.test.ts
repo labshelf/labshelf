@@ -7,7 +7,8 @@ import { EditorView } from "@codemirror/view";
 import type { ILogger } from "../../../../src/index.js";
 import type { HelperProblem } from "../../../../src/helper/index.js";
 import type { DictionaryFiles, DictionaryStore } from "../../../../src/writing/proofing/port.js";
-import { applyProblems, mountSourceEditor, type SourceEditorDeps } from "../../../../src/writing/dom/sourceEditor/editor.js";
+import { mountSourceEditor, type SourceEditorDeps } from "../../../../src/writing/dom/sourceEditor/editor.js";
+import { applyProblems } from "../../../../src/writing/dom/sourceEditor/editorSupport.js";
 import { createProofing, proofingCheckerOf, proofingStateOf, type ProofingSetting } from "../../../../src/writing/dom/sourceEditor/proofing.js";
 
 function dictionaryFolder(pkg: string): string | undefined {

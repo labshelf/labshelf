@@ -299,17 +299,22 @@ function createPix2tex(python: PythonProvider, logger: HelperLogger, files: Help
   return { runner, provider };
 }
 
-export async function runHelperHost(options: HelperHostOptions): Promise<void> {
-  const { dataDir, logger, helperVersion, host } = options;
-  // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
-  const send = createFrameWriter(options.output ?? process.stdout, logger);
-  const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  const python = options.python ?? createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  const projects = createLibraryProjects({ logger });
-  const { builds, publishing } = createBuildAndPublish(options, projects, tex);
-  const { runner, cells } = createCells(python, projects, logger, options.cellDrivers);
-  const pix2tex = createPix2tex(python, logger, options.pix2texFiles);
-  const dispatcher = createHelperAnswerer(
+type HelperParts = {
+  projects: LibraryProjects;
+  builds: ReturnType<typeof createBuildAndPublish>["builds"];
+  publishing: ReturnType<typeof createBuildAndPublish>["publishing"];
+  cells: ReturnType<typeof createCells>["cells"];
+  pix2tex: ReturnType<typeof createPix2tex>;
+  tex: ReturnType<typeof createSharedTexProvider>;
+  python: PythonProvider;
+};
+
+/** The answerer that routes every helper request to the handlers of the parts built for this run. */
+function createDispatcher(
+  { dataDir, logger, helperVersion, host }: Pick<HelperHostOptions, "dataDir" | "logger" | "helperVersion" | "host">,
+  { projects, builds, publishing, cells, pix2tex, tex, python }: HelperParts,
+) {
+  return createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
       compile: builds.compile, cancel: builds.cancel,
@@ -327,6 +332,19 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     },
     logger,
   );
+}
+
+export async function runHelperHost(options: HelperHostOptions): Promise<void> {
+  const { dataDir, logger, helperVersion, host } = options;
+  // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
+  const send = createFrameWriter(options.output ?? process.stdout, logger);
+  const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  const python = options.python ?? createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  const projects = createLibraryProjects({ logger });
+  const { builds, publishing } = createBuildAndPublish(options, projects, tex);
+  const { runner, cells } = createCells(python, projects, logger, options.cellDrivers);
+  const pix2tex = createPix2tex(python, logger, options.pix2texFiles);
+  const dispatcher = createDispatcher({ dataDir, logger, helperVersion, host }, { projects, builds, publishing, cells, pix2tex, tex, python });
   let socket: HelperServer | undefined;
   const hello: HelloAnswer = async (message, reply) => {
     socket = await answerHello(message, reply, {

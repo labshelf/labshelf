@@ -2,14 +2,29 @@
 // highlights and note pins, and what the person selects or clicks; plus a page thumbnail for hovers.
 import { drawPdfPage, openPdfDeck, type PdfDeck, type PdfDeckSource } from "../../../decks/dom/pdfDeck.js";
 import type { Annotation, AnnotationPosition } from "../../../model/index.js";
+import type { ItemFile } from "../../../qmd/item/index.js";
 import { deriveBoxInPage, derivePageFrame } from "../../../reader/dom/pageHighlights.js";
 import { renderElement, renderIcon } from "../../../ui/dom/index.js";
+import { deriveNotePage } from "../../citations/citeTargets.js";
 
 /** How a host gives a paper's PDF: the shape openPdfDeck takes. */
 export type PaperPdfSource = PdfDeckSource;
 
 /** A note shown as a pin: its 1-based page and, when the note has a place, its point in page fractions (pins without one stack at the page's right edge). */
 export interface PaperNotePin { id: string; page: number; x?: number; y?: number }
+
+/** The pins of the notes that have a page: a point or box at its place, a note on a highlight at the highlight's corner, others at the page's edge. */
+export function deriveNotePins(notes: ItemFile | undefined, annotations: readonly Annotation[]): PaperNotePin[] {
+  return (notes?.segments ?? []).flatMap((segment): PaperNotePin[] => {
+    if (segment.kind !== "item") return [];
+    const page = deriveNotePage(segment, annotations);
+    if (page === undefined) return [];
+    const { anchor } = segment;
+    if (anchor.kind === "point" || anchor.kind === "box") return [{ id: segment.id, page, x: anchor.x, y: anchor.y }];
+    const position = anchor.kind === "highlight" ? annotations.find((annotation) => annotation.id === anchor.annotationId)?.position : undefined;
+    return [position ? { id: segment.id, page, x: position.x, y: position.y } : { id: segment.id, page }];
+  });
+}
 
 /** A selection of the paper's text: the 1-based page it starts on, its text, and the highlight it lies inside, if any. */
 export interface PaperSelection { page: number; text: string; highlightId?: string }

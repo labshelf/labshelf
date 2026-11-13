@@ -22,6 +22,9 @@ import type { ActiveSource } from "../writing/index.js";
 import type { WritingProjects } from "../writing/projects/index.js";
 import { registerSourceEditor, type EditorPrefsHost } from "../writing/sourceEditor/index.js";
 import type { SourceEditorProviderDeps } from "../writing/sourceEditor/index.js";
+import { createAutosave, type DiskMerge } from "../localSync/index.js";
+import { createConsultFiles, createVscodeConsultIo } from "../consult/index.js";
+import { sourceAuthorities } from "../writing/sourceEditor/authorities.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {
@@ -60,6 +63,8 @@ const READER_COMMANDS: readonly ReaderCommandId[] = [
 export interface PanelCommandsDeps {
   /** The editors' preferences, shared with the notes editor. */
   editorPrefs: EditorPrefsHost;
+  /** Merges disk changes into the dirty documents of the LabShelf source editor. */
+  diskMerge?: DiskMerge;
   addToSpace?: (ids: string[]) => Promise<boolean>;
   context: vscode.ExtensionContext;
   events: LibraryEvents;
@@ -157,8 +162,39 @@ function extractEquationOf(deps: PanelCommandsDeps, services: ActiveServices): {
   return port ? { extractEquation: port } : {};
 }
 
+/** The reader panel's dependencies over the open library's services. */
+function readerPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): Parameters<typeof PdfReaderPanel.createOrShow>[0] {
+  return {
+    extensionUri: deps.context.extensionUri,
+    events: deps.events,
+    store: services.paperDataStore,
+    notes: services.paperNotesStore,
+    noteFileIo: createVsCodeNoteFileIo(services.fileSystem, deps.adapters.paths.join),
+    themes: services.readerThemeStore,
+    logger: services.logger,
+    locatePdfjs: deps.adapters.reader.locatePdfjs,
+    isMac: deps.adapters.reader.isMac,
+    ...(deps.cite ? { cite: deps.cite } : {}),
+    ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
+    ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
+    ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
+    consult: (post) => readerConsultOf(deps, services, post),
+  };
+}
+
+/** One reader panel's consult: the open library's papers and the writing projects answer it, its files are clients of the shared authorities. The reader has no project, so no code is listed and Browse… is not offered. */
+function readerConsultOf(deps: PanelCommandsDeps, services: ActiveServices, post: Parameters<typeof createConsultFiles>[0]["post"]): ReturnType<typeof createConsultFiles> {
+  const library = { listPapers: () => services.paperService.listPapers() };
+  const io = createVscodeConsultIo({
+    library, projects: deps.projects, highlightsOf: (paperId) => services.paperDataStore.getAnnotations(paperId), paperNotes: deps.sourceEditor.paperNotes,
+  });
+  const autosave = createAutosave();
+  const files = createConsultFiles({ post, io, projects: deps.projects, library, authorities: sourceAuthorities, autosave, logger: services.logger });
+  return { handle: (message) => files.handle(message), dispose() { files.dispose(); autosave.dispose(); } };
+}
+
 function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
-  const { context, events, requireServices, adapters } = deps;
+  const { context, requireServices } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openPdfViewer", async (paperId?: string, page?: number) => {
@@ -169,25 +205,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
       // One guard covers every reader entry point (double-click, Enter, child
       // row, detail button, palette): a PDF-less paper warns and opens nothing.
       if (!(await ensurePaperPdf(services, paper))) { return; }
-      PdfReaderPanel.createOrShow(
-        {
-          extensionUri: context.extensionUri,
-          events,
-          store: services.paperDataStore,
-          notes: services.paperNotesStore,
-          noteFileIo: createVsCodeNoteFileIo(services.fileSystem, adapters.paths.join),
-          themes: services.readerThemeStore,
-          logger: services.logger,
-          locatePdfjs: adapters.reader.locatePdfjs,
-          isMac: adapters.reader.isMac,
-          ...(deps.cite ? { cite: deps.cite } : {}),
-          ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
-          ...(deps.installPython ? { installPython: deps.installPython } : {}), ...extractEquationOf(deps, services),
-          ...(deps.paperObjects ? { paperObjects: deps.paperObjects } : {}),
-        },
-        paper,
-        typeof page === "number" ? { page } : {},
-      );
+      PdfReaderPanel.createOrShow(readerPanelDeps(deps, services), paper, typeof page === "number" ? { page } : {});
     }),
     // The list passes "file": it copies the Markdown itself, so only saving is left to ask for.
     vscode.commands.registerCommand("labshelf.exportAnnotations", async (paperId?: string, to?: "file") => {
@@ -219,6 +237,7 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   registerReaderPanelCommands(deps);
   registerSourceEditor(deps.context, {
     extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource, editorPrefs: deps.editorPrefs,
+    ...(deps.diskMerge ? { diskMerge: deps.diskMerge } : {}),
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
     highlightsOf: async (paperId) => await deps.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [],

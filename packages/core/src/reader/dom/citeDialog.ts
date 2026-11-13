@@ -67,89 +67,157 @@ function fillOptions(select: HTMLSelectElement, entries: ReadonlyArray<{ value: 
   if (selected !== undefined) { select.value = selected; }
 }
 
-/**
- * Opens the cite popup over the reader.
- * @returns close, which dismisses the popup without citing
- */
-export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOptions): { close(): void } {
-  const { client, memory } = options;
+/** What the options say, worked out once: a cite popup or a code insert popup, with its texts. */
+interface CiteConfig {
+  code: CodeInsertDialogOptions["code"] | undefined;
+  cite: CiteDialogOptions | undefined;
+  page: number | undefined;
+  quote: string | undefined;
+  heading: string;
+  hint: string;
+  noProject: string;
+  notify: (message: string) => void;
+}
+
+function deriveConfig(options: CiteDialogOptions | CodeInsertDialogOptions): CiteConfig {
   const code = "code" in options ? options.code : undefined;
   const cite = "code" in options ? undefined : options;
-  const page = cite?.page;
-  const quote = cite?.quote?.trim() ? cite.quote.slice(0, MAX_CITE_QUOTE_LENGTH) : undefined;
-  const heading = cite ? `Cite ${cite.citeKey}` : "Insert code into a manuscript";
-  const hint = `Click in the text where ${cite ? "the citation" : "the code"} goes`;
-  const noProject = cite ? "No writing project to cite in" : "No writing project to insert into";
-  const notify = options.notify ?? ((message: string) => { showToast(message, "ok"); });
+  return {
+    code, cite, page: cite?.page,
+    quote: cite?.quote?.trim() ? cite.quote.slice(0, MAX_CITE_QUOTE_LENGTH) : undefined,
+    heading: cite ? `Cite ${cite.citeKey}` : "Insert code into a manuscript",
+    hint: `Click in the text where ${cite ? "the citation" : "the code"} goes`,
+    noProject: cite ? "No writing project to cite in" : "No writing project to insert into",
+    notify: options.notify ?? ((message: string) => { showToast(message, "ok"); }),
+  };
+}
 
-  const project = { select: renderSelect("Project") };
-  const file = { select: renderSelect("File") };
-  const quoteBox = renderElement("input", { type: "checkbox", checked: true });
-  const quoteField = renderElement("label", { class: "rd-cite-dialog-check" }, quoteBox, "With the quotation");
-  const copy = renderTextButton("Copy");
-  const onlyAdd = renderTextButton("Only add to the bibliography");
-  const cancel = renderTextButton("Cancel");
-  const insert = renderTextButton("Insert", "rd-btn-primary");
-  const dialog = renderPickerDialog({
-    heading, badges: [...(page === undefined ? [] : [`p. ${page}`]), ...(code ? [code.label] : [])],
-    pickers: [{ label: "Project", control: project.select }, { label: "File", control: file.select }],
-    leading: [copy, ...(code ? [] : quote === undefined ? [onlyAdd] : [quoteField])], trailing: [cancel, insert],
-    onDismiss: () => {
-      closed = true;
-      view?.destroy();
-      options.onClose?.();
-    },
-  });
-  const { content, pickers, body, showStatus } = dialog;
+/** The file read, with its text and, for code, the listing built for it. */
+type CiteSource = { path: string; version: string; text: string; listing?: string };
 
-  let projects: CiteProject[] = [];
-  let current: CiteProject | undefined;
-  /** The file read, with its text and, for code, the listing built for it. */
-  let source: { path: string; version: string; text: string; listing?: string } | undefined;
-  let offset: number | null = null;
-  let view: CiteSourceView | undefined;
-  let busy = false;
-  let closed = false;
+/** One open cite (or code insert) popup. */
+class CiteDialog {
+  private readonly config: CiteConfig;
+  private readonly projectSelect = renderSelect("Project");
+  private readonly fileSelect = renderSelect("File");
+  private readonly quoteBox = renderElement("input", { type: "checkbox", checked: true });
+  private readonly quoteField = renderElement("label", { class: "rd-cite-dialog-check" }, this.quoteBox, "With the quotation");
+  private readonly copy = renderTextButton("Copy");
+  private readonly onlyAdd = renderTextButton("Only add to the bibliography");
+  private readonly cancel = renderTextButton("Cancel");
+  private readonly insert = renderTextButton("Insert", "rd-btn-primary");
+  private readonly dialog: ReturnType<typeof renderPickerDialog>;
+  private readonly sourceView: Promise<CiteSourceView | undefined>;
+
+  private projects: CiteProject[] = [];
+  private current: CiteProject | undefined;
+  private source: CiteSource | undefined;
+  private offset: number | null = null;
+  private view: CiteSourceView | undefined;
+  private busy = false;
+  private closed = false;
   // Each read gets a number, so a late reply of a file the user has left is dropped.
-  let readSeq = 0;
+  private readSeq = 0;
 
-  const citation = (): string | null => {
-    if (!current || offset === null) { return null; }
-    if (cite) { return createReaderCitation(current.format, cite.citeKey, { page, quote }, quote !== undefined && quoteBox.checked); }
-    return source?.listing === undefined ? null : placeBlockAt(source.text, offset, source.listing);
-  };
-  const refresh = (): void => {
-    insert.disabled = busy || !source || offset === null;
-    onlyAdd.disabled = busy;
-    copy.disabled = busy || (code !== undefined && source?.listing === undefined);
-    onlyAdd.hidden = code !== undefined || quote !== undefined || !current || current.inBibliography;
-    if (current) { onlyAdd.textContent = `Only add to ${current.bibliography}`; }
-    project.select.disabled = busy || projects.length === 0;
-    file.select.disabled = busy || !current || current.files.length === 0;
-    view?.setCitation(citation());
+  constructor(private readonly options: CiteDialogOptions | CodeInsertDialogOptions) {
+    this.config = deriveConfig(options);
+    this.dialog = this.renderDialog();
+    this.sourceView = this.loadSourceView();
+    this.wire();
+    this.dialog.showStatus("Loading projects…");
+    this.refresh();
+    void this.loadTargets();
+  }
+
+  close = (): void => {
+    if (this.closed) { return; }
+    this.closed = true;
+    this.dialog.close();
+    this.view?.destroy();
+    this.options.onClose?.();
   };
 
-  const sourceView = (options.loadSourceView ?? loadDefaultSourceView)().then((create) => {
-    if (closed) { return undefined; }
-    view = create((placed) => {
-      offset = placed;
-      showStatus(hint);
-      refresh();
+  private renderDialog(): ReturnType<typeof renderPickerDialog> {
+    const { code, quote, page, heading } = this.config;
+    return renderPickerDialog({
+      heading, badges: [...(page === undefined ? [] : [`p. ${page}`]), ...(code ? [code.label] : [])],
+      pickers: [{ label: "Project", control: this.projectSelect }, { label: "File", control: this.fileSelect }],
+      leading: [this.copy, ...(code ? [] : quote === undefined ? [this.onlyAdd] : [this.quoteField])], trailing: [this.cancel, this.insert],
+      onDismiss: () => {
+        this.closed = true;
+        this.view?.destroy();
+        this.options.onClose?.();
+      },
     });
-    body.append(view.element);
-    return view;
-  });
+  }
 
-  const readFile = async (path: string): Promise<void> => {
+  private loadSourceView(): Promise<CiteSourceView | undefined> {
+    return (this.options.loadSourceView ?? loadDefaultSourceView)().then((create) => {
+      if (this.closed) { return undefined; }
+      const view = create((placed) => {
+        this.offset = placed;
+        this.dialog.showStatus(this.config.hint);
+        this.refresh();
+      });
+      this.view = view;
+      this.dialog.body.append(view.element);
+      return view;
+    });
+  }
+
+  private wire(): void {
+    this.projectSelect.addEventListener("change", () => this.selectProject(this.projectSelect.value));
+    this.fileSelect.addEventListener("change", () => {
+      this.options.memory.path = this.fileSelect.value;
+      void this.readFile(this.fileSelect.value);
+    });
+    this.quoteBox.addEventListener("change", () => this.refresh());
+    this.insert.addEventListener("click", () => this.doInsert());
+    this.onlyAdd.addEventListener("click", () => this.doOnlyAdd());
+    this.copy.addEventListener("click", () => this.doCopy());
+    this.cancel.addEventListener("click", this.close);
+    this.dialog.content.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        this.doInsert();
+      }
+    });
+  }
+
+  private citation(): string | null {
+    const { current, offset, source } = this;
+    const { cite, page, quote } = this.config;
+    if (!current || offset === null) { return null; }
+    if (cite) { return createReaderCitation(current.format, cite.citeKey, { page, quote }, quote !== undefined && this.quoteBox.checked); }
+    return source?.listing === undefined ? null : placeBlockAt(source.text, offset, source.listing);
+  }
+
+  private refresh(): void {
+    const { busy, current, source, projects } = this;
+    const { code, quote } = this.config;
+    this.insert.disabled = busy || !source || this.offset === null;
+    this.onlyAdd.disabled = busy;
+    this.copy.disabled = busy || (code !== undefined && source?.listing === undefined);
+    this.onlyAdd.hidden = code !== undefined || quote !== undefined || !current || current.inBibliography;
+    if (current) { this.onlyAdd.textContent = `Only add to ${current.bibliography}`; }
+    this.projectSelect.disabled = busy || projects.length === 0;
+    this.fileSelect.disabled = busy || !current || current.files.length === 0;
+    this.view?.setCitation(this.citation());
+  }
+
+  private async readFile(path: string): Promise<void> {
+    const { current } = this;
     if (!current) { return; }
-    const seq = ++readSeq;
+    const { code } = this.config;
+    const { showStatus } = this.dialog;
+    const seq = ++this.readSeq;
     const format = current.format;
-    source = undefined;
-    offset = null;
+    this.source = undefined;
+    this.offset = null;
     showStatus(`Reading ${path}…`);
-    refresh();
-    const [reply, shown] = await Promise.all([client.request({ kind: "read", projectId: current.id, path }), sourceView]);
-    if (closed || seq !== readSeq) { return; }
+    this.refresh();
+    const [reply, shown] = await Promise.all([this.options.client.request({ kind: "read", projectId: current.id, path }), this.sourceView]);
+    if (this.closed || seq !== this.readSeq) { return; }
     if (reply.kind !== "source") {
       showStatus(reply.kind === "error" ? reply.message : `Could not read ${path}`, true);
       return;
@@ -158,138 +226,124 @@ export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOpti
       showStatus(`Could not build the listing for ${path}`, true);
       return;
     }
-    source = { path, version: reply.version, text: reply.text, ...(reply.insert === undefined ? {} : { listing: reply.insert }) };
+    this.source = { path, version: reply.version, text: reply.text, ...(reply.insert === undefined ? {} : { listing: reply.insert }) };
     shown?.show(reply.text, format);
-    showStatus(hint);
-    refresh();
-  };
+    showStatus(this.config.hint);
+    this.refresh();
+  }
 
-  const selectProject = (id: string, path?: string): void => {
-    current = projects.find((entry) => entry.id === id);
+  private selectProject(id: string, path?: string): void {
+    const current = this.projects.find((entry) => entry.id === id);
+    this.current = current;
     if (!current) { return; }
     const target = path !== undefined && current.files.includes(path) ? path : current.files[0];
-    fillOptions(file.select, current.files.map((entry) => ({ value: entry, label: entry })), target);
-    memory.projectId = current.id;
+    fillOptions(this.fileSelect, current.files.map((entry) => ({ value: entry, label: entry })), target);
+    this.options.memory.projectId = current.id;
     if (target === undefined) {
-      source = undefined;
-      offset = null;
-      showStatus(`${current.title} has no ${current.format === "typst" ? ".typ" : ".tex"} file`, true);
-      refresh();
+      this.source = undefined;
+      this.offset = null;
+      this.dialog.showStatus(`${current.title} has no ${current.format === "typst" ? ".typ" : ".tex"} file`, true);
+      this.refresh();
       return;
     }
-    memory.path = target;
-    void readFile(target);
-  };
+    this.options.memory.path = target;
+    void this.readFile(target);
+  }
 
-  const finish = (reply: CiteReply, done: (reply: CiteReply) => string | null): void => {
-    busy = false;
-    if (closed) { return; }
+  private finish(reply: CiteReply, done: (reply: CiteReply) => string | null): void {
+    this.busy = false;
+    if (this.closed) { return; }
     const message = done(reply);
     if (message !== null) {
-      notify(message);
-      closeDialog();
+      this.config.notify(message);
+      this.close();
       return;
     }
-    if (reply.kind === "error") { showStatus(reply.message, true); }
-    refresh();
-  };
+    if (reply.kind === "error") { this.dialog.showStatus(reply.message, true); }
+    this.refresh();
+  }
 
-  const doInsert = (): void => {
-    if (insert.disabled || !current || !source || offset === null) { return; }
-    const target = source;
-    busy = true;
-    refresh();
-    void client.request({
-      kind: "insert", projectId: current.id, path: target.path, version: target.version, offset,
+  private doInsert(): void {
+    const { current, source, offset } = this;
+    const { cite, page, quote } = this.config;
+    if (this.insert.disabled || !current || !source || offset === null) { return; }
+    this.busy = true;
+    this.refresh();
+    void this.options.client.request({
+      kind: "insert", projectId: current.id, path: source.path, version: source.version, offset,
       ...(page === undefined ? {} : { page }),
       ...(quote === undefined ? {} : { quote }),
-      quoted: quote !== undefined && quoteBox.checked,
-    }).then((reply) => finish(reply, (answer) => {
+      quoted: quote !== undefined && this.quoteBox.checked,
+    }).then((reply) => this.finish(reply, (answer) => {
       if (answer.kind === "inserted") {
         return cite ? `Cited in ${answer.path}` : [`Inserted into ${answer.path}`, answer.hint].filter(Boolean).join(". ");
       }
       if (answer.kind === "error" && answer.stale) {
         // The file changed since it was read: show its new text and ask for the place again.
-        void readFile(target.path).then(() => { if (!closed && source) { showStatus(answer.message, true); } });
+        void this.readFile(source.path).then(() => { if (!this.closed && this.source) { this.dialog.showStatus(answer.message, true); } });
       }
       return null;
     }));
-  };
+  }
 
-  const doOnlyAdd = (): void => {
-    if (!current || busy) { return; }
-    busy = true;
-    refresh();
-    void client.request({ kind: "bibliography", projectId: current.id })
-      .then((reply) => finish(reply, (answer) => (answer.kind === "listed" ? `Added to ${answer.bibliography}` : null)));
-  };
+  private doOnlyAdd(): void {
+    const { current } = this;
+    if (!current || this.busy) { return; }
+    this.busy = true;
+    this.refresh();
+    void this.options.client.request({ kind: "bibliography", projectId: current.id })
+      .then((reply) => this.finish(reply, (answer) => (answer.kind === "listed" ? `Added to ${answer.bibliography}` : null)));
+  }
 
-  const doCopy = (): void => {
-    if (busy) { return; }
+  private doCopy(): void {
+    if (this.busy) { return; }
+    const { code, cite, page, quote } = this.config;
     if (code) {
-      if (source?.listing === undefined) { return; }
-      code.copy(source.listing);
-      closeDialog();
+      if (this.source?.listing === undefined) { return; }
+      code.copy(this.source.listing);
+      this.close();
       return;
     }
     cite?.post(quote !== undefined && page !== undefined
       ? { command: "copyWithCitation", text: quote, pageNumber: page }
       : { command: "copyCitation", ...(page === undefined ? {} : { pageNumber: page }) });
-    closeDialog();
-  };
+    this.close();
+  }
 
   // Without a project only Copy and Cancel remain.
-  const showNoProject = (): void => {
-    pickers.hidden = true;
-    body.hidden = true;
-    quoteField.hidden = true;
-    onlyAdd.hidden = true;
-    insert.hidden = true;
+  private showNoProject(): void {
+    this.dialog.pickers.hidden = true;
+    this.dialog.body.hidden = true;
+    this.quoteField.hidden = true;
+    this.onlyAdd.hidden = true;
+    this.insert.hidden = true;
     // Without a project there is no listing to copy.
-    copy.hidden = code !== undefined;
-    showStatus(noProject);
-  };
-
-  project.select.addEventListener("change", () => selectProject(project.select.value));
-  file.select.addEventListener("change", () => {
-    memory.path = file.select.value;
-    void readFile(file.select.value);
-  });
-  quoteBox.addEventListener("change", refresh);
-  insert.addEventListener("click", doInsert);
-  onlyAdd.addEventListener("click", doOnlyAdd);
-  copy.addEventListener("click", doCopy);
-  content.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      doInsert();
-    }
-  });
-
-  function closeDialog(): void {
-    if (closed) { return; }
-    closed = true;
-    dialog.close();
-    view?.destroy();
-    options.onClose?.();
+    this.copy.hidden = this.config.code !== undefined;
+    this.dialog.showStatus(this.config.noProject);
   }
-  cancel.addEventListener("click", closeDialog);
 
-  showStatus("Loading projects…");
-  refresh();
-  void client.request({ kind: "targets" }).then((reply) => {
-    if (closed) { return; }
+  private async loadTargets(): Promise<void> {
+    const reply = await this.options.client.request({ kind: "targets" });
+    if (this.closed) { return; }
     // A host without a cite port answers with an error; Copy still works there.
     if (reply.kind !== "targets" || reply.projects.length === 0) {
-      showNoProject();
+      this.showNoProject();
       return;
     }
-    projects = reply.projects;
-    const remembered = projects.find((entry) => entry.id === memory.projectId) ?? projects[0]!;
-    fillOptions(project.select, projects.map((entry) => ({ value: entry.id, label: entry.title })), remembered.id);
-    selectProject(remembered.id, remembered.id === memory.projectId ? memory.path : undefined);
-    void sourceView.then((shown) => shown?.focus());
-  });
+    const { memory } = this.options;
+    this.projects = reply.projects;
+    const remembered = this.projects.find((entry) => entry.id === memory.projectId) ?? this.projects[0]!;
+    fillOptions(this.projectSelect, this.projects.map((entry) => ({ value: entry.id, label: entry.title })), remembered.id);
+    this.selectProject(remembered.id, remembered.id === memory.projectId ? memory.path : undefined);
+    void this.sourceView.then((shown) => shown?.focus());
+  }
+}
 
-  return { close: closeDialog };
+/**
+ * Opens the cite popup over the reader.
+ * @returns close, which dismisses the popup without citing
+ */
+export function openCiteDialog(options: CiteDialogOptions | CodeInsertDialogOptions): { close(): void } {
+  const dialog = new CiteDialog(options);
+  return { close: dialog.close };
 }

@@ -8,6 +8,8 @@ import {
   createPreviewStore,
   ReaderHostController,
   answerNoteFileRequest,
+  createPaperFiles,
+  joinWith,
   type CiteReply,
   type CiteRequest,
   type EffectiveTheme,
@@ -21,6 +23,7 @@ import {
 import { PDF_FILE, formatError, type AiProvider } from "@labshelf/core";
 import type { PaperObjectsPort } from "@labshelf/core/paperObjects";
 import { createLazyPaperObjects } from "../../paperObjects/lazy";
+import type { ConsultSetup } from "@labshelf/core/consult";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { createAiCredentialStore } from "../../platform/settings";
 import { bx, createBrowserLogger, createPdfWorker, extensionPdfAssets, pdfjsAssetUrl, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
@@ -28,7 +31,10 @@ import { getBrowserCellPorts } from "../../helper";
 import { createBrowserEquationPort } from "../../equations/equationPort";
 import { createBrowserNoteFileIo, createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, moveReaderIntoLibrary, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
-import { createReaderCite } from "./citeInProject";
+import { followLiveNotes } from "../../localSync/liveFiles";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
+import { createReaderCite } from "../../writing";
+import { createBrowserConsultSetup } from "../../consult/consultHost";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -169,6 +175,14 @@ function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: Read
   });
 }
 
+/** Holds the paper's notes.qmd live while the page is open, so notes edited in another tab reach this reader; nothing changes without live files. */
+async function holdLiveNotes(paper: PaperRecord, host: ReaderHostController): Promise<void> {
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error("reader", error, { action: "readLiveFiles" }); return undefined; });
+  if (!live) return;
+  const followed = followLiveNotes({ live, path: createPaperFiles(paper.path, joinWith("/")).notes, onChange: () => { void host.refreshNotes().catch(() => undefined); } });
+  window.addEventListener("pagehide", () => { void followed.release().catch(() => undefined); }, { once: true });
+}
+
 async function openPreview(paper: PaperRecord): Promise<void> {
   // INVARIANT: the parent page posts once this page loads, so the listener is bound before the first await; the host asks for prefs only after they load.
   let currentPrefs: ReaderPrefs | undefined;
@@ -184,6 +198,12 @@ async function openPreview(paper: PaperRecord): Promise<void> {
     pdf: { readBytes, createWorker: createPdfWorker },
     saveAiKey,
   });
+}
+
+/** The reader's Consult over the page's live files hub, no project; none when the hub is missing. */
+async function readReaderConsult(): Promise<ConsultSetup | undefined> {
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error("reader", error, { action: "readLiveFiles" }); return undefined; });
+  return live ? createBrowserConsultSetup({ fs, logger, live }) : undefined;
 }
 
 async function main(): Promise<void> {
@@ -207,6 +227,7 @@ async function main(): Promise<void> {
   const boot = bootParams(paper, prefs, false);
 
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
+  void holdLiveNotes(paper, host);
 
   void logger.log("INFO", "reader", "reader opened", { paperId: paper.id, page: page ?? null });
   await startReader({
@@ -215,6 +236,7 @@ async function main(): Promise<void> {
     perf,
     pdf: { readBytes: () => readPdfBytes(paper), createWorker: createPdfWorker },
     saveAiKey,
+    consult: readReaderConsult,
   });
 }
 

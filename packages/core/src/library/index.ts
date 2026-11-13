@@ -13,6 +13,7 @@ export { nameCollator, createPaperComparator, createPaperRecordComparator, compa
 export type { PaperDiff } from "./paperOrder.js";
 export { describePaperFile, listPaperFiles } from "./paperFiles.js";
 export type { PaperFile, PaperFilesState } from "./paperFiles.js";
+export * from "./citationStyles.js";
 export * from "./record.js";
 export { deriveCiteKeySlug, ensureCiteKey, createCiteKey, deriveUniqueCiteKey } from "./citeKey.js";
 export type { CiteKeyMetadata } from "./citeKey.js";

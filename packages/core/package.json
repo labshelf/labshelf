@@ -71,6 +71,7 @@
     "./mcp/node": "./src/mcp/node/index.ts",
     "./decks/node": "./src/decks/node/index.ts",
     "./sourceEditor": "./src/writing/dom/sourceEditor/index.ts",
+    "./consult": "./src/writing/consult/dom/index.ts",
     "./math": "./src/latex/hover/index.ts",
     "./figureEditor": "./src/qmd/dom/figureEditor/openFigureEditor.ts",
     "./deckEditor": "./src/decks/dom/openDeckEditor.ts",

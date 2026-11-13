@@ -26,8 +26,9 @@ export {
 export { buildIcs, buildOverview } from "./spaceOverview.js";
 export { SPACE_TABS, isSpaceQmdPath, parseSpacesMessage } from "./spacesProtocol.js";
 export { parseDateDraft, parseTermDraft } from "./parseSpaceDrafts.js";
+export type { SpaceMutation } from "./spaceMutationParse.js";
 export type {
-  HomeAction, HostToSpaces, PaperPickItem, SpaceMutation, SpacePapersDownload, SpaceQmdAction, SpaceShareView, SpacesEndpoint, SpacesToHost, SpacesTransport, SpaceTab,
+  HomeAction, HostToSpaces, PaperPickItem, SpacePapersDownload, SpaceQmdAction, SpaceShareView, SpacesEndpoint, SpacesToHost, SpacesTransport, SpaceTab,
 } from "./spacesProtocol.js";
 export type { SpacePeer, SpaceProjectChat, SpacesHostPort } from "./spacesHostPort.js";
 export { serveSpaces } from "./serveSpaces.js";

@@ -4,6 +4,8 @@ import { deckTitleOf, detectSourceDeckKind, lastDeckPageMap, readSourceDeckNotes
 import { pickQuickEntry, renderElement, showToast, type EditorTabAction, type EditorTabBody } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import { bx, createPdfWorker, createStorageCalibrationStore, downloadBytes, extensionPdfAssets, openBlobTab } from "../../platform";
+import { bindDeckReplicas, type DeckReplicas } from "../../localSync/deckBinding";
+import { readPageLiveFiles } from "../../storage/libraryFileSystem";
 import { findProject } from "../../writing";
 import { createDeckAssetResolver, createFullResolutionResolver, downscaleImage, type DeckAssetResolver } from "./deckAssets";
 import { exportDeckFromBrowser } from "./deckExport";
@@ -90,6 +92,30 @@ function createDeckSaver(fs: LibraryFileSystem, files: DeckFiles, initial: { htm
     },
     flush: () => run(),
   };
+}
+
+/** What the edit view saves through: the serial saver over the files, or the live files' replicas with their writers. */
+interface DeckPersistence { change(next: { html: string; theme: string }): void; flush(): Promise<boolean>; dispose(): void }
+
+/** Delay before the live files are flushed after a change; the writers persist within 300 ms on their own. */
+const LIVE_FLUSH_MS = 300;
+
+/** The live files of the deck and, when it exists at mount, its theme; undefined without live files or when a replica fails, and the saver then writes the files. */
+async function openLiveDeck(fs: LibraryFileSystem, logger: ILogger, files: DeckFiles): Promise<(DeckReplicas & { release(): Promise<void> }) | undefined> {
+  // A page that cannot start its live files edits the files as it did before.
+  const live = await Promise.resolve().then(readPageLiveFiles).catch((error: unknown) => { void logger.error(MODULE, error, { action: "readLiveFiles" }); return undefined; });
+  if (!live) return undefined;
+  const deck = live.open(files.deck);
+  const theme = (await fs.exists(files.theme)) ? live.open(files.theme) : undefined;
+  const release = async (): Promise<void> => { await deck.release(); await theme?.release(); };
+  try {
+    await Promise.all([deck.replica.ready, theme?.replica.ready]);
+  } catch (error) {
+    void logger.error(MODULE, error, { action: "openLiveDeck", path: files.deckName });
+    await release();
+    return undefined;
+  }
+  return { deck, ...(theme ? { theme } : {}), release };
 }
 
 /** What a deck tab holds while open; every part is released on dispose, also when it mounts after the tab closed. */
@@ -239,11 +265,12 @@ async function mountPdfView(host: HTMLElement, ctx: TabContext, deck: { projectI
 }
 
 /** Opens the deck workspace in host and wires its saver, the tab's dirty mark and the state's edit hooks. */
-function mountEditView(host: HTMLElement, ctx: TabContext, deckPath: string, state: DeckTabState, module: DeckModule, files: DeckFiles, common: Pick<Parameters<DeckModule["openDeckWorkspace"]>[1], "html" | "theme" | "resolveAsset" | "loadMath">): void {
+function mountEditView(host: HTMLElement, ctx: TabContext, deckPath: string, state: DeckTabState, module: DeckModule, files: DeckFiles, common: Pick<Parameters<DeckModule["openDeckWorkspace"]>[1], "html" | "theme" | "resolveAsset" | "loadMath">, live: Awaited<ReturnType<typeof openLiveDeck>>): void {
   const { fs, logger, tab } = ctx;
   const { html, theme } = common;
-  let shown: { setSaved(saved: boolean): void } | undefined;
-  const saver = createDeckSaver(fs, files, { html, theme }, { setDirty: (dirty) => { tab.setDirty(dirty); shown?.setSaved(!dirty); }, logger });
+  let shown: { setSaved(saved: boolean): void; setDocument(html: string, theme: string): void } | undefined;
+  const setDirty = (dirty: boolean): void => { tab.setDirty(dirty); shown?.setSaved(!dirty); };
+  const saver: DeckPersistence = live ? createLiveSaver(live, fs, files, theme, { setDirty, setDocument: (nextHtml, nextTheme) => { state.current = { html: nextHtml, theme: nextTheme }; shown?.setSaved(true); shown?.setDocument(nextHtml, nextTheme); }, logger }) : { ...createDeckSaver(fs, files, { html, theme }, { setDirty, logger }), dispose: () => undefined };
   tab.onBeforeClose(() => saver.flush());
   const editor = module.openDeckWorkspace(host, {
     ...common, title: deckPath.split("/").slice(-2, -1)[0] ?? deckPath, history: "internal", kits: createBrowserKitsPort(fs),
@@ -262,6 +289,48 @@ function mountEditView(host: HTMLElement, ctx: TabContext, deckPath: string, sta
     flush: () => saver.flush(),
   };
   state.destroy.push(() => editor.destroy());
+  if (live) {
+    // The files let go once the last change is flushed.
+    state.destroy.push(() => { saver.dispose(); void saver.flush().then(() => live.release()); });
+  }
+}
+
+/** The saver over live files: a change goes into the replicas and the tab is dirty until the flush that follows it. */
+function createLiveSaver(live: NonNullable<Awaited<ReturnType<typeof openLiveDeck>>>, fs: LibraryFileSystem, files: DeckFiles, theme: string, hooks: { setDirty(dirty: boolean): void; setDocument(html: string, theme: string): void; logger: ILogger }): DeckPersistence {
+  const binding = bindDeckReplicas(live, { setDocument: hooks.setDocument }, {
+    text: theme,
+    write: async (text) => {
+      try {
+        await fs.writeText(files.theme, text);
+      } catch (error) {
+        void hooks.logger.error(MODULE, error, { action: "saveDeck", path: files.theme });
+        showToast(`Could not save ${files.themeName}.`, "error");
+      }
+    },
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const flush = async (): Promise<boolean> => {
+    if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
+    try {
+      const ok = await binding.flush();
+      if (timer === undefined) hooks.setDirty(false);
+      return ok;
+    } catch (error) {
+      void hooks.logger.error(MODULE, error, { action: "saveDeck", path: files.deckName });
+      showToast(`Could not save ${files.deckName}.`, "error");
+      return false;
+    }
+  };
+  return {
+    change: (next) => {
+      binding.change(next);
+      hooks.setDirty(true);
+      if (timer !== undefined) clearTimeout(timer);
+      timer = setTimeout(() => { timer = undefined; void flush(); }, LIVE_FLUSH_MS);
+    },
+    flush,
+    dispose: () => binding.dispose(),
+  };
 }
 
 /** Mounts the view's controller in host once the files and the deck chunk have loaded. */
@@ -273,16 +342,18 @@ async function mountView(host: HTMLElement, ctx: TabContext, deck: { projectId: 
   const entry = await findProject(fs, logger, ctx.project().session.current(), deck.projectId);
   const files = deckFiles(entry.folder, deck.path);
   const loadingModule: Promise<DeckModule> = import("@labshelf/core/deckEditor");
-  const html = await fs.readText(files.deck);
-  const theme = (await fs.exists(files.theme)) ? await fs.readText(files.theme) : "";
+  // The edit view binds to live files, so every tab of the deck edits one replica; the other views read the files.
+  const live = deck.view === "edit" ? await openLiveDeck(fs, logger, files) : undefined;
+  const html = live ? live.deck.replica.text() : await fs.readText(files.deck);
+  const theme = live ? (live.theme?.replica.text() ?? "") : (await fs.exists(files.theme)) ? await fs.readText(files.theme) : "";
   const module = await loadingModule;
-  if (state.disposed) return;
+  if (state.disposed) { void live?.release(); return; }
   const assets = createDeckAssetResolver(fs, files.deck.slice(0, files.deck.lastIndexOf("/")), browserAssetPorts());
   state.assets = assets;
   state.current = { html, theme };
   const common = { html, theme, resolveAsset: assets.resolveAsset, loadMath };
 
-  if (deck.view === "edit") return mountEditView(host, ctx, deck.path, state, module, files, common);
+  if (deck.view === "edit") return mountEditView(host, ctx, deck.path, state, module, files, common, live);
   if (deck.view === "poster") {
     // The print check measures the images it is shown, so the poster preview gets the full-resolution bytes, not the proxies.
     const full = createFullResolutionResolver(assets, browserAssetPorts());

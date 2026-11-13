@@ -130,124 +130,156 @@ export interface QmdBubbleOptions {
   onOpenLink?(href: string): void;
 }
 
+type BubbleMode = "selection" | "click";
+
+/** The bubble mounted over one editor view; see `mountQmdBubble`. */
+class QmdBubbleView implements QmdBubble {
+  private readonly bubble = renderElement("div", { class: "qmd-bubble", hidden: true });
+  private mode: BubbleMode | null = null;
+  /** Set while a pill button runs: a selection button's own edit refreshes the pill instead of closing it. */
+  private acting = false;
+  private pointerDown = false;
+  private readonly click = trackStillClick();
+  private readonly previous: EditorView["props"]["dispatchTransaction"];
+
+  constructor(private readonly root: HTMLElement, private readonly view: EditorView, private readonly options: QmdBubbleOptions) {
+    root.append(this.bubble);
+    view.dom.addEventListener("mousedown", this.onMouseDown);
+    window.addEventListener("mouseup", this.onMouseUp);
+    root.addEventListener("focusin", this.onFocusIn);
+    root.addEventListener("focusout", this.onFocusOut);
+    window.addEventListener("scroll", this.onScroll, true);
+    this.previous = afterTransactions(view, this.onTransaction);
+  }
+
+  openHere = (): boolean => this.open(this.view.state.selection.empty ? "click" : "selection");
+
+  escape = (): boolean => {
+    if (this.mode === null) return false;
+    this.close();
+    return true;
+  };
+
+  destroy = (): void => {
+    this.view.dom.removeEventListener("mousedown", this.onMouseDown);
+    window.removeEventListener("mouseup", this.onMouseUp);
+    this.root.removeEventListener("focusin", this.onFocusIn);
+    this.root.removeEventListener("focusout", this.onFocusOut);
+    window.removeEventListener("scroll", this.onScroll, true);
+    if (!this.view.isDestroyed && this.previous) this.view.setProps({ dispatchTransaction: this.previous });
+    this.bubble.remove();
+  };
+
+  private prefs(): SelectionPopupPrefs { return this.options.popup?.prefs() ?? SELECTION_ONLY; }
+
+  private shown(choice: Choice): boolean { return !this.prefs().hidden.includes(choice.id); }
+
+  private close(): void { this.mode = null; this.bubble.hidden = true; }
+
+  private button(choice: Choice, state: EditorState): PillButton {
+    return {
+      label: choice.label, icon: choice.icon, ...(choice.shortcut ? { shortcut: shortcutLabel(choice.shortcut) } : {}),
+      ...(this.mode === "selection" && choice.active ? { pressed: choice.active(state) } : {}),
+      disabled: !choice.command(state),
+      run: () => {
+        this.acting = this.mode === "selection";
+        try { runAction(this.view, choice); } finally { this.acting = false; }
+        if (this.mode === "click") this.close();
+      },
+    };
+  }
+
+  private customize(): MenuEntry[] {
+    const { popup } = this.options;
+    if (!popup?.setPrefs) return [];
+    const save = popup.setPrefs;
+    return [{ label: "Customize popup…", icon: "gear", onSelect: () => {
+      this.close();
+      openSelectionPopupDialog({ title: "Customize Note Popup", prefs: popup.prefs(), groups: POPUP_GROUPS, onChange: save, view: this.view });
+    } }];
+  }
+
+  /** The pill's groups now, empty when it has nothing to offer. */
+  private groupsOf(state: EditorState, current: BubbleMode): { groups: PillButton[][]; entries: MenuEntry[] } {
+    if (current === "click") {
+      const inserts = insertsAt(state).filter((choice) => this.shown(choice) && choice.command(state)).map((choice) => this.button(choice, state));
+      return { groups: [inserts], entries: inserts.length > 0 ? this.customize() : [] };
+    }
+    const { onOpenLink } = this.options;
+    const href = this.prefs().contextual && onOpenLink ? paperLinkNear(state) : undefined;
+    const contextual: PillButton[] = href && onOpenLink ? [{ label: "Open in PDF", icon: "book-open", run: () => { this.close(); onOpenLink(href); } }] : [];
+    const styles = BLOCK_STYLES.filter((choice) => this.shown(choice)).map((choice): MenuEntry => ({ label: choice.label, icon: choice.icon, onSelect: () => { this.close(); runAction(this.view, choice); } }));
+    const more = this.customize();
+    const entries = [...styles, ...(styles.length > 0 && more.length > 0 ? ["separator" as const] : []), ...more];
+    return { groups: [contextual, FORMATTING.filter((choice) => this.shown(choice)).map((choice) => this.button(choice, state))], entries };
+  }
+
+  private render(): void {
+    const { view, mode } = this;
+    if (mode === null || view.isDestroyed) return;
+    const { groups, entries } = this.groupsOf(view.state, mode);
+    const more: PillButton[] = entries.length > 0 ? [{ label: "More", icon: "more", run: (element) => showMenu(element, entries) }] : [];
+    renderPillBar([...groups, more], { label: mode === "click" ? "Insert at the cursor" : "Selection actions", pill: this.bubble });
+    this.bubble.hidden = false;
+    placeBubble(view, this.bubble, view.state.selection.from, view.state.selection.to);
+  }
+
+  /** Opens the pill in `next` mode when the selection fits it and it has something to offer. */
+  private open(next: BubbleMode): boolean {
+    const { view } = this;
+    const { selection } = view.state;
+    if (!view.editable || view.isDestroyed || !view.dom.isConnected || inNodeEditor() || !(selection instanceof TextSelection) || selection.empty !== (next === "click")) return false;
+    if (next === "click" && !this.options.popup) return false;
+    const { groups, entries } = this.groupsOf(view.state, next);
+    if (groups.every((group) => group.length === 0) && entries.length === 0) return false;
+    this.mode = next;
+    this.render();
+    return true;
+  }
+
+  private readonly onTransaction = (changed: boolean): void => {
+    if (!changed) return;
+    if (this.acting && this.mode === "selection" && !this.view.state.selection.empty) { this.render(); return; }
+    this.close();
+    if (!this.pointerDown && this.prefs().trigger === "any") this.open("selection");
+  };
+
+  private onText(target: EventTarget | null): boolean {
+    return target instanceof Element && this.view.dom.contains(target) && !target.closest("[contenteditable=false], button, .qmd-cell-code, .qmd-math-edit");
+  }
+
+  private readonly onMouseDown = (event: MouseEvent): void => { this.pointerDown = true; this.click.press(event, this.onText(event.target)); };
+
+  private readonly onMouseUp = (event: MouseEvent): void => {
+    if (!this.pointerDown) return;
+    this.pointerDown = false;
+    const still = this.click.isStill(event);
+    // Wait for ProseMirror to settle the selection of this press.
+    setTimeout(() => {
+      if (this.view.isDestroyed) return;
+      const { trigger, onClick } = this.prefs();
+      if (!this.view.state.selection.empty) { if (trigger === "any" || (trigger === "mouse" && event.detail <= 1)) this.open("selection"); }
+      else if (onClick && still) this.open("click");
+    }, 0);
+  };
+
+  private readonly onFocusIn = (): void => { if (inNodeEditor()) this.close(); };
+
+  private readonly onFocusOut = (event: FocusEvent): void => {
+    const next = event.relatedTarget as Node | null;
+    if (next !== null && !this.root.contains(next)) this.close();
+  };
+
+  private readonly onScroll = (): void => {
+    if (this.mode !== null && !this.view.isDestroyed) placeBubble(this.view, this.bubble, this.view.state.selection.from, this.view.state.selection.to);
+  };
+}
+
 /**
  * Mounts the bubble into `root` for the editable `view`. A selection opens it as the settings' trigger says, a still click on the text opens the insertions
  * when `onClick` is on and the host passed its settings, and Mod-. opens either; Escape, an edit, a selection change, blur or a node editor's focus close it.
  * @returns the commands of its keys (Mod-. opens it, Escape closes it when open) and `destroy`.
  */
 export function mountQmdBubble(root: HTMLElement, view: EditorView, options: QmdBubbleOptions): QmdBubble {
-  const bubble = renderElement("div", { class: "qmd-bubble", hidden: true });
-  root.append(bubble);
-  const prefs = (): SelectionPopupPrefs => options.popup?.prefs() ?? SELECTION_ONLY;
-  const shown = (choice: Choice): boolean => !prefs().hidden.includes(choice.id);
-  let mode: "selection" | "click" | null = null;
-  /** Set while a pill button runs: a selection button's own edit refreshes the pill instead of closing it. */
-  let acting = false;
-  let pointerDown = false;
-  const click = trackStillClick();
-
-  const close = (): void => { mode = null; bubble.hidden = true; };
-  const button = (choice: Choice, state: EditorState): PillButton => ({
-    label: choice.label, icon: choice.icon, ...(choice.shortcut ? { shortcut: shortcutLabel(choice.shortcut) } : {}),
-    ...(mode === "selection" && choice.active ? { pressed: choice.active(state) } : {}),
-    disabled: !choice.command(state),
-    run: () => {
-      acting = mode === "selection";
-      try { runAction(view, choice); } finally { acting = false; }
-      if (mode === "click") close();
-    },
-  });
-  const customize = (): MenuEntry[] => {
-    const { popup } = options;
-    if (!popup?.setPrefs) return [];
-    const save = popup.setPrefs;
-    return [{ label: "Customize popup…", icon: "gear", onSelect: () => {
-      close();
-      openSelectionPopupDialog({ title: "Customize Note Popup", prefs: popup.prefs(), groups: POPUP_GROUPS, onChange: save, view });
-    } }];
-  };
-
-  /** The pill's groups now, empty when it has nothing to offer. */
-  function groupsOf(state: EditorState, current: "selection" | "click"): { groups: PillButton[][]; entries: MenuEntry[] } {
-    if (current === "click") {
-      const inserts = insertsAt(state).filter((choice) => shown(choice) && choice.command(state)).map((choice) => button(choice, state));
-      return { groups: [inserts], entries: inserts.length > 0 ? customize() : [] };
-    }
-    const href = prefs().contextual && options.onOpenLink ? paperLinkNear(state) : undefined;
-    const contextual: PillButton[] = href ? [{ label: "Open in PDF", icon: "book-open", run: () => { close(); options.onOpenLink!(href); } }] : [];
-    const styles = BLOCK_STYLES.filter(shown).map((choice): MenuEntry => ({ label: choice.label, icon: choice.icon, onSelect: () => { close(); runAction(view, choice); } }));
-    const more = customize();
-    const entries = [...styles, ...(styles.length > 0 && more.length > 0 ? ["separator" as const] : []), ...more];
-    return { groups: [contextual, FORMATTING.filter(shown).map((choice) => button(choice, state))], entries };
-  }
-
-  function render(): void {
-    if (mode === null || view.isDestroyed) return;
-    const { groups, entries } = groupsOf(view.state, mode);
-    const more: PillButton[] = entries.length > 0 ? [{ label: "More", icon: "more", run: (element) => showMenu(element, entries) }] : [];
-    renderPillBar([...groups, more], { label: mode === "click" ? "Insert at the cursor" : "Selection actions", pill: bubble });
-    bubble.hidden = false;
-    placeBubble(view, bubble, view.state.selection.from, view.state.selection.to);
-  }
-
-  /** Opens the pill in `next` mode when the selection fits it and it has something to offer. */
-  function open(next: "selection" | "click"): boolean {
-    const { selection } = view.state;
-    if (!view.editable || view.isDestroyed || !view.dom.isConnected || inNodeEditor() || !(selection instanceof TextSelection) || selection.empty !== (next === "click")) return false;
-    if (next === "click" && !options.popup) return false;
-    const { groups, entries } = groupsOf(view.state, next);
-    if (groups.every((group) => group.length === 0) && entries.length === 0) return false;
-    mode = next;
-    render();
-    return true;
-  }
-
-  const openHere = (): boolean => open(view.state.selection.empty ? "click" : "selection");
-  const onTransaction = (changed: boolean): void => {
-    if (!changed) return;
-    if (acting && mode === "selection" && !view.state.selection.empty) { render(); return; }
-    close();
-    if (!pointerDown && prefs().trigger === "any") open("selection");
-  };
-  const onText = (target: EventTarget | null): boolean =>
-    target instanceof Element && view.dom.contains(target) && !target.closest("[contenteditable=false], button, .qmd-cell-code, .qmd-math-edit");
-  const onMouseDown = (event: MouseEvent): void => { pointerDown = true; click.press(event, onText(event.target)); };
-  const onMouseUp = (event: MouseEvent): void => {
-    if (!pointerDown) return;
-    pointerDown = false;
-    const still = click.isStill(event);
-    // Wait for ProseMirror to settle the selection of this press.
-    setTimeout(() => {
-      if (view.isDestroyed) return;
-      const { trigger, onClick } = prefs();
-      if (!view.state.selection.empty) { if (trigger === "any" || (trigger === "mouse" && event.detail <= 1)) open("selection"); }
-      else if (onClick && still) open("click");
-    }, 0);
-  };
-  const onFocusIn = (): void => { if (inNodeEditor()) close(); };
-  const onFocusOut = (event: FocusEvent): void => {
-    const next = event.relatedTarget as Node | null;
-    if (next !== null && !root.contains(next)) close();
-  };
-  const onScroll = (): void => { if (mode !== null && !view.isDestroyed) placeBubble(view, bubble, view.state.selection.from, view.state.selection.to); };
-  view.dom.addEventListener("mousedown", onMouseDown);
-  window.addEventListener("mouseup", onMouseUp);
-  root.addEventListener("focusin", onFocusIn);
-  root.addEventListener("focusout", onFocusOut);
-  window.addEventListener("scroll", onScroll, true);
-  const previous = afterTransactions(view, onTransaction);
-
-  return {
-    openHere,
-    escape: () => { if (mode === null) return false; close(); return true; },
-    destroy() {
-      view.dom.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-      root.removeEventListener("focusin", onFocusIn);
-      root.removeEventListener("focusout", onFocusOut);
-      window.removeEventListener("scroll", onScroll, true);
-      if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous });
-      bubble.remove();
-    },
-  };
+  return new QmdBubbleView(root, view, options);
 }

@@ -1,9 +1,10 @@
-// Handles the reader messages that write the paper's notes.qmd: note add, edit, move, colour and remove, each followed by the full list, and answers the prose math (evalMath).
+// Handles the reader messages that write the paper's notes.qmd: note add, edit, move, colour and remove, each followed by the full list, and answers the prose math (evalMath) and the note editor's From paper… picker (paperObjects).
 import { formatError } from "../errors/index.js";
 import { isAnnotationColor } from "../model/index.js";
 import type { MathResult } from "../qmd/compute/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
 import { createCellRuns, unsupportedNoteFileReply, type NoteFileRequest, type PaperNotesStore } from "../qmd/index.js";
+import { answerPaperObjectsRequest, unsupportedPaperObjectsReply, type PaperObjectsRequest } from "../paperObjects/protocol.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ReaderHostPorts } from "./hostPorts.js";
 
@@ -129,4 +130,15 @@ export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNo
   removeNote: (ctx, msg) => writeNote(ctx, "remove", msg.command, (notes, id) => notes.removeItem(id, msg.id)),
 
   colorNote: (ctx, msg) => writeNote(ctx, "edit", msg.command, (notes, id) => notes.setAttribute(id, msg.id, "color", msg.color)),
+};
+
+// ---------- From paper… ----------
+// Answers the reader's paperObjects messages through the host's optional paper-object port.
+/** Posts the port's answer, or "From paper is not available here." where the host has no port, so the picker never waits. */
+async function answerReaderPaperObjects(ports: Pick<ReaderHostPorts, "paperObjects" | "post">, request: PaperObjectsRequest): Promise<void> {
+  ports.post(ports.paperObjects ? await answerPaperObjectsRequest(ports.paperObjects, request) : unsupportedPaperObjectsReply(request));
+}
+
+export const paperObjectHandlers: Pick<MessageAnswers, "paperObjects"> = {
+  paperObjects: (ctx, msg) => answerReaderPaperObjects(ctx.ports, msg.request),
 };

@@ -129,20 +129,23 @@ export async function readCurrentLibraryId(): Promise<string> {
 
 const layout = createLibraryLayout("", joinWith("/"));
 
-type TextFileFs = Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">;
+type BytesFileFs = Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">;
+type TextFileFs = Pick<LibraryFileSystem, "stat" | "readText" | "writeText">;
 
 // A text file per paper at the path the layout gives; a missing file, or a paper without a path, reads as null.
-function createPaperTextPort(fs: TextFileFs, pathOf: (paperId: string) => string | Promise<string | undefined>): SidecarPort & PaperNotesPort {
+function createPaperTextPort(
+  io: { readText(path: string): Promise<string | null>; writeText(path: string, text: string): Promise<void> },
+  pathOf: (paperId: string) => string | Promise<string | undefined>,
+): SidecarPort & PaperNotesPort {
   return {
     async read(paperId) {
       const path = await pathOf(paperId);
-      if (path === undefined || !(await fs.stat(path))?.isFile) return null;
-      return new TextDecoder().decode(await fs.readFile(path));
+      return path === undefined ? null : io.readText(path);
     },
     async write(paperId, text) {
       const path = await pathOf(paperId);
       if (path === undefined) throw new Error(`Paper ${paperId} is not in the library; its file has no folder to go to`);
-      await fs.writeFile(path, new TextEncoder().encode(text));
+      await io.writeText(path, text);
     },
   };
 }
@@ -150,8 +153,11 @@ function createPaperTextPort(fs: TextFileFs, pathOf: (paperId: string) => string
 /**
  * @returns a SidecarPort reading and writing UTF-8 JSON through the library file system; a missing file reads as null.
  */
-export function createSidecarPort(fs: TextFileFs): SidecarPort {
-  return createPaperTextPort(fs, layout.paperDataPath);
+export function createSidecarPort(fs: BytesFileFs): SidecarPort {
+  return createPaperTextPort({
+    async readText(path) { return (await fs.stat(path))?.isFile ? new TextDecoder().decode(await fs.readFile(path)) : null; },
+    writeText: (path, text) => fs.writeFile(path, new TextEncoder().encode(text)),
+  }, layout.paperDataPath);
 }
 
 /**
@@ -159,7 +165,18 @@ export function createSidecarPort(fs: TextFileFs): SidecarPort {
  * records) through the library file system; a missing file or an unknown paper reads as null.
  */
 export function createPaperNotesPort(fs: TextFileFs): PaperNotesPort {
-  return createPaperTextPort(fs, async (paperId) => {
+  return createPaperTextPort({
+    async readText(path) {
+      try {
+        return await fs.readText(path);
+      } catch (error) {
+        // Each backend words a missing file its own way, so the disk decides whether the read failed or the file is absent.
+        if (!(await fs.stat(path))?.isFile) return null;
+        throw error;
+      }
+    },
+    writeText: (path, text) => fs.writeText(path, text),
+  }, async (paperId) => {
     const record = await readCachedPaperRecord(paperId);
     return record && createPaperFiles(record.path, joinWith("/")).notes;
   });

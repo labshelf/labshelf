@@ -1,4 +1,5 @@
 // Declares the messages between a Project chat page and its host, with the parsers that check each side's untrusted input, and the page's chat source over them.
+import { isRecord } from "../guards/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/transport.js";
 import type { ProjectChatMessage, ProjectChatPeer, ProjectChatSource } from "./projectChatSource.js";
 
@@ -21,9 +22,6 @@ export type ProjectChatHostEnd = MessageEnd<HostToProjectChat, unknown>;
 /** The page's end of the host channel. */
 export type ProjectChatPageEnd = MessageEnd<ProjectChatToHost, unknown>;
 
-type Fields = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 const isText = (value: unknown): value is string => typeof value === "string";
 const isId = (value: unknown): value is string => isText(value) && value !== "" && value.length <= 200;
 

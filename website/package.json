@@ -10,6 +10,7 @@
   "dependencies": {
     "@labshelf/core": "workspace:*",
     "fflate": "^0.8.2",
+    "node-diff3": "^3.2.1",
     "pdfjs-dist": "~6.3.289",
     "texlyre-busytex": "1.4.1"
   },

@@ -225,6 +225,26 @@ function placePaneBars(ws: WorkspaceState, parts: { header: WorkspaceUi["header"
   place();
 }
 
+/** The slide strip of a talk. A poster is one page: it has no strip, and its blocks are picked on the page or in the code. */
+function buildStructure(ws: WorkspaceState): ReturnType<typeof createStructurePanel> {
+  const { ports } = ws;
+  return createStructurePanel({
+    select: (path) => select(ws, path, true), selectPreamble: () => selectPreamble(ws), selectSection: (section) => selectSection(ws, section),
+    newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide), units: () => stripUnits(ws),
+    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
+    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}),
+  });
+}
+
+/** The properties panel of the selected block. */
+function buildProps(ws: WorkspaceState): ReturnType<typeof createPropertiesPanel> {
+  const { ports } = ws;
+  return createPropertiesPanel({
+    write: (prop, value) => writeProp(ws, prop, value), action: (action) => act(ws, action), columns: () => ws.tree.filter((n) => n.kind === "column").length,
+    ...(ports.pickImage ? { replaceImage: () => void ports.pickImage!().then((src) => { if (src) writeProp(ws, "src", src); }) } : {}),
+  });
+}
+
 /** Builds the workspace's elements and panels in the shell mounted in `host`; their callbacks act on `ws`, whose `ui` is filled with the result. */
 export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   const { kind, ports } = ws;
@@ -243,13 +263,7 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   if (kind === "poster") { poster = createWorkspacePoster(ws, style.button); stage.onHover((point) => void hover(ws, point)); }
   const bar = buildInsertBar(ws, poster ? [style.button, poster.button] : [style.button]);
   const insertBar = { element: bar.element, refresh: () => { bar.refresh(); style.render(); } };
-  // A poster is one page: it has no strip, and its blocks are picked on the page or in the code.
-  const structure = kind === "talk" ? createStructurePanel({
-    select: (path) => select(ws, path, true), selectPreamble: () => selectPreamble(ws), selectSection: (section) => selectSection(ws, section),
-    newSlide: (layout) => newSlide(ws, layout), pageOfSlide: (slide) => ws.linking.pageOfSlide(slide), units: () => stripUnits(ws),
-    overflowOfSlide: (slide) => ws.overflow?.has(slide) ?? false,
-    ...(ports.dropImage ? { dropImage: (path: SourceDeckPath, drop: FileDrop) => void dropFigure(ws, drop, path) } : {}),
-  }) : undefined;
+  const structure = kind === "talk" ? buildStructure(ws) : undefined;
   const target = zoomTarget(ws, stage);
   // Talks get no Zoom to section.
   const { zoomToRect: _zoomToRect, ...talkSurface } = stage.surface;
@@ -257,10 +271,7 @@ export function buildUi(ws: WorkspaceState, host: HTMLElement): WorkspaceUi {
   // A talk or poster is edited in its code: the page only zooms, and a click goes to the slide's or block's code.
   zoomBar = createZoomBar(surface, kind === "poster" ? { section: target, tools: false } : { tools: false });
   if (kind === "poster") { mountMinimap(ws, stage); stage.onView(() => zoomBar?.render()); }
-  const props = createPropertiesPanel({
-    write: (prop, value) => writeProp(ws, prop, value), action: (action) => act(ws, action), columns: () => ws.tree.filter((n) => n.kind === "column").length,
-    ...(ports.pickImage ? { replaceImage: () => void ports.pickImage!().then((src) => { if (src) writeProp(ws, "src", src); }) } : {}),
-  });
+  const props = buildProps(ws);
   const { notes, notesPanel } = buildNotes(ws);
   const grid = kind === "talk" ? buildGrid(ws) : undefined;
   const status = createShellStatus();

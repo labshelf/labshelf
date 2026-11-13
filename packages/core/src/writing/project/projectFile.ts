@@ -203,6 +203,59 @@ function readMapping(text: string): Record<string, unknown> | string {
   return value as Record<string, unknown>;
 }
 
+function normalizeFolderPath(folder: string): string {
+  return folder.split("/").map((segment) => segment.trim()).filter(Boolean).join("/");
+}
+
+/** Reads the optional text keys and the folder; the reason names the offending key. */
+function readTextKeys(raw: Record<string, unknown>, settings: ProjectSettings): string | undefined {
+  for (const key of OPTIONAL_STRING_KEYS) {
+    const value = raw[key];
+    // A YAML number such as `typst: 0.13` is still a version string to the user.
+    if (typeof value === "number") { settings[key] = String(value); continue; }
+    if (value !== undefined && value !== null && typeof value !== "string") { return `${key} must be text`; }
+    settings[key] = value ?? undefined;
+  }
+  if (typeof raw["folder"] === "string") {
+    settings.folder = normalizeFolderPath(raw["folder"]) || undefined;
+  } else if (raw["folder"] !== undefined && raw["folder"] !== null) { return "folder must be text"; }
+  if (raw["archived"] !== undefined && raw["archived"] !== null && typeof raw["archived"] !== "boolean") {
+    return "archived must be true or false";
+  }
+  if (raw["archived"] === true) { settings.archived = true; }
+  for (const key of ["title", "trashed", "shared"] as const) {
+    const value = raw[key];
+    if (value !== undefined && value !== null && typeof value !== "string") { return `${key} must be text`; }
+    if (typeof value === "string" && value.trim() !== "") { settings[key] = value.trim(); }
+  }
+  return undefined;
+}
+
+/** Reads the target into the settings. */
+function readTargetKey(raw: Record<string, unknown>, settings: ProjectSettings): string | undefined {
+  if (raw["target"] === undefined || raw["target"] === null) { return undefined; }
+  const target = readTarget(raw["target"]);
+  if (typeof target === "string") { return target; }
+  settings.target = target;
+  return undefined;
+}
+
+/** Reads the linked library folders and the listed papers into the settings. */
+function readLinkedKeys(raw: Record<string, unknown>, settings: ProjectSettings): string | undefined {
+  const linked = raw["libraryFolders"];
+  if (linked !== undefined && linked !== null) {
+    if (!isTextList(linked)) { return "libraryFolders must be a list of library folder paths"; }
+    const folders = linked.map(normalizeFolderPath).filter(Boolean);
+    if (folders.length > 0) { settings.libraryFolders = [...new Set(folders)]; }
+  }
+  if (raw["papers"] !== undefined && raw["papers"] !== null) {
+    const papers = readListedPapers(raw["papers"]);
+    if (typeof papers === "string") { return papers; }
+    settings.papers = papers;
+  }
+  return undefined;
+}
+
 /** Reads the settings; the reason of a failure names the offending key so the user can fix the file. */
 export function parseProjectFile(text: string): ProjectFileResult {
   const raw = readMapping(text);
@@ -215,46 +268,14 @@ export function parseProjectFile(text: string): ProjectFileResult {
     return { ok: false, reason: `engine must be one of ${LATEX_ENGINES.join(", ")}` };
   }
   const settings: ProjectSettings = { id: raw["id"], format: raw["format"], engine: raw["engine"] };
-  for (const key of OPTIONAL_STRING_KEYS) {
-    const value = raw[key];
-    // A YAML number such as `typst: 0.13` is still a version string to the user.
-    if (typeof value === "number") { settings[key] = String(value); continue; }
-    if (value !== undefined && value !== null && typeof value !== "string") {
-      return { ok: false, reason: `${key} must be text` };
-    }
-    settings[key] = value ?? undefined;
-  }
-  if (typeof raw["folder"] === "string") {
-    const folder = raw["folder"].split("/").map((segment) => segment.trim()).filter(Boolean).join("/");
-    settings.folder = folder || undefined;
-  } else if (raw["folder"] !== undefined && raw["folder"] !== null) { return { ok: false, reason: "folder must be text" }; }
-  if (raw["archived"] !== undefined && raw["archived"] !== null && typeof raw["archived"] !== "boolean") {
-    return { ok: false, reason: "archived must be true or false" };
-  }
-  if (raw["archived"] === true) { settings.archived = true; }
-  for (const key of ["title", "trashed", "shared"] as const) {
-    const value = raw[key];
-    if (value !== undefined && value !== null && typeof value !== "string") { return { ok: false, reason: `${key} must be text` }; }
-    if (typeof value === "string" && value.trim() !== "") { settings[key] = value.trim(); }
-  }
-  if (raw["target"] !== undefined && raw["target"] !== null) {
-    const target = readTarget(raw["target"]);
-    if (typeof target === "string") { return { ok: false, reason: target }; }
-    settings.target = target;
-  }
+  const textReason = readTextKeys(raw, settings);
+  if (textReason !== undefined) { return { ok: false, reason: textReason }; }
+  const targetReason = readTargetKey(raw, settings);
+  if (targetReason !== undefined) { return { ok: false, reason: targetReason }; }
   const userKeys = readUserSettings(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
-  const linked = raw["libraryFolders"];
-  if (linked !== undefined && linked !== null) {
-    if (!isTextList(linked)) { return { ok: false, reason: "libraryFolders must be a list of library folder paths" }; }
-    const folders = linked.map((folder) => folder.split("/").map((segment) => segment.trim()).filter(Boolean).join("/")).filter(Boolean);
-    if (folders.length > 0) { settings.libraryFolders = [...new Set(folders)]; }
-  }
-  if (raw["papers"] !== undefined && raw["papers"] !== null) {
-    const papers = readListedPapers(raw["papers"]);
-    if (typeof papers === "string") { return { ok: false, reason: papers }; }
-    settings.papers = papers;
-  }
+  const linkedReason = readLinkedKeys(raw, settings);
+  if (linkedReason !== undefined) { return { ok: false, reason: linkedReason }; }
   return { ok: true, settings: { ...settings, ...userKeys } };
 }
 

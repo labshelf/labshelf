@@ -1,7 +1,7 @@
 // Runs the text-box creation mode: a click fits a box into the empty space around it, a drag draws one.
 import { formatAnchor } from "../../qmd/item/index.js";
 import { fitEmptyBox, snapBox, type PageRect } from "../textBoxPlacement.js";
-import { collectPageRects, showDraft } from "./noteBoxes.js";
+import { collectPageRects, showDraft } from "./noteBoxPlacement.js";
 import { beginPageDrag, trackPointer } from "./pageDrag.js";
 import type { ReaderContext } from "./readerSession.js";
 

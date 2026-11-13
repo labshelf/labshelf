@@ -269,6 +269,12 @@ function createPagePaperObjects(fs: LibraryFileSystem): PaperObjectsPort {
   })));
 }
 
+/** The right pane's Project chat follows the project's sharing, and a space's chat is the pane's. */
+function bindProjectChat(project: ProjectWiring, rightPane: ReturnType<typeof createRightPane>, spaces: PageSpaces, fs: LibraryFileSystem): void {
+  rightPane.projectChat.bind({ sharing: project.services.sharing, fs, logger: log });
+  spaces.port.projectChat = (projectId) => Promise.resolve(rightPane.projectChat.spaceChat(projectId));
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   void movePaperNotes(fs, log).catch((error: unknown) => log.error("library", error, { op: "movePaperNotes" }));
@@ -309,10 +315,7 @@ async function boot(): Promise<void> {
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing, spaces: spaces.shareSpaces() });
   if (project) projectsLibrary = await connectProjectSharing(project, { libraryHost, spaces, details: channels.projects, workspace, fs });
-  if (project) {
-    rightPane.projectChat.bind({ sharing: project.services.sharing, fs, logger: log });
-    spaces.port.projectChat = (projectId) => Promise.resolve(rightPane.projectChat.spaceChat(projectId));
-  }
+  if (project) bindProjectChat(project, rightPane, spaces, fs);
   mountPageDetails(shell.details, details.ui, prefs);
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
